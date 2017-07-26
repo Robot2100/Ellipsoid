@@ -2,7 +2,7 @@
 //
 
 #include "stdafx.h"
-#include <sstream>
+#include "../Includes/Includes.h"
 
 
 using namespace std;
@@ -81,7 +81,6 @@ int main(int argn, char * argv[]) {
         CloseHandle(hThreadArray[i]);
     }
     DeleteCriticalSection(&CriticalSection);
-	//system("pause");
 	return 0;
 }
 Cell LoadXDATCAR(vector<Elipsoid> & pList)
@@ -179,7 +178,7 @@ Cell LoadXDATCAR(vector<Elipsoid> & pList)
 				Point dp = tempVec[i][AllSteps] - tempVec[i][AllSteps - 1];
 				for (int j = 0; j < 3; j++) {
 					if (abs(dp.a[j]) > 0.5)
-						tempVec[i][AllSteps].a[j] = _sign(dp.a[j]);
+						tempVec[i][AllSteps].a[j] -= _sign(dp.a[j]);
 					else dp.a[j] = 0;
 				}
 			}
