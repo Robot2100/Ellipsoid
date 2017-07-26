@@ -9,6 +9,9 @@
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
+XDATCAR
+*.txt
+*.ins
 
 # Build results
 [Dd]ebug/

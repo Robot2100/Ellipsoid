@@ -8,6 +8,7 @@
 #include "targetver.h"
 
 #include <stdio.h>
+#include "../Includes/Includes.h"
 
 #include <Windows.h>
 #include <stdlib.h>
@@ -18,5 +19,4 @@
 #include <string>
 #include <time.h>
 #include <vector>
-#include "../Includes/Includes.h"
 // TODO: Установите здесь ссылки на дополнительные заголовки, требующиеся для программы
