@@ -10,31 +10,14 @@ const int MAX_LINE = 128;
 
 std::vector<Point> fPos;
 
-DWORD WINAPI ThreadProc( LPVOID lpParameter );
 Cell LoadXDATCAR(vector<Elipsoid> & pList);
 void OutIns(Elipsoid & el);
 int _sign(flo a);
 void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList);
 
-CRITICAL_SECTION CriticalSection; 
 
-OldParam param;
 int main(int argn, char * argv[]) {
 	vector<string> OUT_st;
-	param.AddNoname("NThreads");
-	param.TakeAgrs(argn,argv);
-	param.ReadNoname(OUT_st);
-	int NThread = 1;
-	if(OUT_st.size()>0) NThread = atoi(OUT_st[0].data());
-	cout << "Program parametrs: NThreads" <<endl;
-	cout <<"\tNThreads: "<< NThread << endl; 
-	vector<DWORD>   dwThreadIdArray;
-    vector<HANDLE>  hThreadArray; 
-	dwThreadIdArray.resize(NThread-1);
-	hThreadArray.resize(NThread-1);
-	vector<list<Elipsoid*>> ElList;
-	if (!InitializeCriticalSectionAndSpinCount(&CriticalSection, 0x00000400) ) 
-		return -1;
 	vector<Elipsoid> El;
 	Cell cell = LoadXDATCAR(El);
 
@@ -56,46 +39,16 @@ int main(int argn, char * argv[]) {
 	}
 	old.close();
 
-	ElList.resize(NThread);
 	int j = 0;
 	int size = El.size();
-	for(int i = 0; i < size;) {
-		for(int j = 0; (j < NThread) && (i < size); j++, i++) {
-			El[i].DefineCell(cell);
-			ElList[j].push_back(&El[i]);
+	for(int i = 0; i < size;i++) {
+		ELIPSOID_RESULT res = El[i].CalculateDinmat();
+		if (res != ELIPSOID_RESULT::OK) {
+			cout << "Error" << endl;
+			return 1;
 		}
+		OutIns(El[i]);
 	}
-	cout << "Prefunction complete." << endl;
-
-	for(int i = 0; i<(NThread-1); i++) {
-		hThreadArray[i] = CreateThread( 
-            NULL,                   // default security attributes
-            0,                      // use default stack size  
-            ThreadProc,       // thread function name
-            &ElList[i],          // argument to thread function 
-            0,                      // use default creation flags 
-            &dwThreadIdArray[i]);   // returns the thread identifier 
-        if (hThreadArray[i] == NULL) 
-        {
-           ExitProcess(3);
-        }
-    }
-
-	ThreadProc(&ElList[NThread-1]);
-    WaitForMultipleObjects(NThread-1, hThreadArray.data(), TRUE, INFINITE);
-
-	for (int i = 0; i < (NThread); i++) {
-		auto iter = ElList[i].begin();
-		while (iter != ElList[i].end()) {
-			OutIns(**iter);
-			iter++;
-		}
-	}
-	for(int i=0; i<NThread-1; i++)
-    {
-        CloseHandle(hThreadArray[i]);
-    }
-    DeleteCriticalSection(&CriticalSection);
 	return 0;
 }
 Cell LoadXDATCAR(vector<Elipsoid> & pList)
@@ -241,33 +194,6 @@ void OutIns(Elipsoid & el)
 
 	file.close();
 
-}
-DWORD WINAPI ThreadProc( LPVOID lpParameter )
-{
-	list<Elipsoid*> * El = reinterpret_cast<list<Elipsoid*> *>(lpParameter);
-	auto iter = El->begin();
-	while(iter!= El->end()) {
-		Elipsoid * pEl = *iter;
-		//iter->Correlation();
-		//iter->Process();
-		//iter->UProc();
-		ELIPSOID_RESULT res = iter.operator*()->CalculateDinmat();
-		if (res != ELIPSOID_RESULT::OK) {
-			cout << "Error" << endl;
-		}
-		iter++;
-	}
-	iter = El->begin();
-
-    EnterCriticalSection(&CriticalSection); 
-	while(iter!= El->end()) {
-		//OutIns(*iter);
-		//Out(*iter);
-		iter++;
-	}
-    LeaveCriticalSection(&CriticalSection);
-
-return 0;
 }
 int _sign(flo a) {
 	if (a < 0) return -1;

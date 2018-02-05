@@ -2,9 +2,8 @@
 
 #include "targetver.h"
 
-#include <stdio.h>
-#include <Windows.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstdlib>
 #include <iostream>
 #include <fstream>
 #include <math.h>
