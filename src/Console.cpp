@@ -1,4 +1,4 @@
-// Console.cpp: определяет точку входа для консольного приложения.
+// Console.cpp: Г®ГЇГ°ГҐГ¤ГҐГ«ГїГҐГІ ГІГ®Г·ГЄГі ГўГµГ®Г¤Г  Г¤Г«Гї ГЄГ®Г­Г±Г®Г«ГјГ­Г®ГЈГ® ГЇГ°ГЁГ«Г®Г¦ГҐГ­ГЁГї.
 //
 
 #include "stdafx.h"
@@ -239,9 +239,9 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList) {
 	constexpr size_t _d = 2*_p+1;
 	constexpr size_t _sizemod = (_d*_d*_d);
 	size_t size_b = size_el*_sizemod;
-	// Неподвижная Декартова суперячейка
+	// ГЌГҐГЇГ®Г¤ГўГЁГ¦Г­Г Гї Г„ГҐГЄГ Г°ГІГ®ГўГ  Г±ГіГЇГҐГ°ГїГ·ГҐГ©ГЄГ 
 	vector<Point> basis(size_b);
-	// Заполнение Базиса копией начальных положений атомов суперячейки
+	// Г‡Г ГЇГ®Г«Г­ГҐГ­ГЁГҐ ГЃГ Г§ГЁГ±Г  ГЄГ®ГЇГЁГҐГ© Г­Г Г·Г Г«ГјГ­Г»Гµ ГЇГ®Г«Г®Г¦ГҐГ­ГЁГ© Г ГІГ®Г¬Г®Гў Г±ГіГЇГҐГ°ГїГ·ГҐГ©ГЄГЁ
 	for (int j = -_p, iter = 0; j <= _p; j++) {
 		for (int k = -_p; k <= _p; k++) {
 			for (int l = -_p; l <= _p; l++) {
@@ -255,9 +255,9 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList) {
 	for (int i = 0; i < size_s; i++) {
 		mirror.push_back((shelx.symm[i].MirrorSymm()));
 	}
-	// Составление первого круга таблицы связности
+	// Г‘Г®Г±ГІГ ГўГ«ГҐГ­ГЁГҐ ГЇГҐГ°ГўГ®ГЈГ® ГЄГ°ГіГЈГ  ГІГ ГЎГ«ГЁГ¶Г» Г±ГўГїГ§Г­Г®Г±ГІГЁ
 	for (int s = 0; s < size_s; s++) {
-		// Декартовы точки после операции симметрии
+		// Г„ГҐГЄГ Г°ГІГ®ГўГ» ГІГ®Г·ГЄГЁ ГЇГ®Г±Г«ГҐ Г®ГЇГҐГ°Г Г¶ГЁГЁ Г±ГЁГ¬Г¬ГҐГІГ°ГЁГЁ
 		vector<Point> pvec(size_el);
 		for (int i = 0; i < size_el; i++) {
 			pvec[i] = shelx.cell.FracToCart() * (shelx.symm[s].GenSymm(fPos[i]));
@@ -280,9 +280,9 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList) {
 		}
 	}
 	{
-		// Были ли изменения
+		// ГЃГ»Г«ГЁ Г«ГЁ ГЁГ§Г¬ГҐГ­ГҐГ­ГЁГї
 		bool changed = false;
-		// Полное сведение таблицы связности 
+		// ГЏГ®Г«Г­Г®ГҐ Г±ГўГҐГ¤ГҐГ­ГЁГҐ ГІГ ГЎГ«ГЁГ¶Г» Г±ГўГїГ§Г­Г®Г±ГІГЁ 
 		do {
 			changed = false;
 			for (size_t i = 0; i < size_el; i++) {
@@ -302,7 +302,7 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList) {
 			}
 		} while (changed == true);
 	}
-	// Перевод точек по схеме
+	// ГЏГҐГ°ГҐГўГ®Г¤ ГІГ®Г·ГҐГЄ ГЇГ® Г±ГµГҐГ¬ГҐ
 	vector<Point> dcheck;
 	{
 		size_t size_l = pList[0].vecPoints.size();
