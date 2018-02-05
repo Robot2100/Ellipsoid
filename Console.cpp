@@ -7,6 +7,7 @@
 
 using namespace std;
 const int MAX_LINE = 128;
+string filenamein;
 
 std::vector<Point> fPos;
 
@@ -14,31 +15,59 @@ Cell LoadXDATCAR(vector<Elipsoid> & pList);
 void OutIns(Elipsoid & el);
 int _sign(flo a);
 void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList);
-
-
+void ffunc(const int l, std::vector<string> & in) {
+	bool help = false;
+	auto size = in.size();
+	switch(l) {
+	case 0:
+		if (size != 0)
+			filenamein = std::move(in[0]);
+		break;
+	case 1:
+		help = true;
+		break;
+	case -1: 
+		if (help) {
+			for (int i = 0; i < size; i++)
+				cout << in[i] << endl;
+			exit(0);
+		}
+	}
+}
 int main(int argn, char * argv[]) {
-	vector<string> OUT_st;
+	{
+		constexpr BaseParam bp[2]{ {"","Input shelx file (optional)"},
+									{"-help", "View help information"} };
+		constexpr ConstParam<1> cp(bp);
+		Param<1> param(&cp);
+		try {
+			param.TakeAgrs(argn, argv, ffunc);
+		}
+		catch (invalid_argument inv) {
+			cout << "Error! Program termination. Reason:" << endl << inv.what() << endl;
+			return 1;
+		}
+	}
 	vector<Elipsoid> El;
 	Cell cell = LoadXDATCAR(El);
-
 	for (int i = 0; i < El.size();i++) {
 		El[i].DefineCell(cell);
 	}
-
-	ifstream old("old.res");
-	if (old.is_open() == true) {
-		nsShelxFile::ShelxData shelx(old);
-		cout << "Symmetry found." << endl;
-		Analize_symmety(shelx, El);
-		ofstream temp("a.ins", ios::app);
-		temp << "LATT " << shelx.LATT << endl;
-		for (int i = 0; i < shelx.symm.size(); i++) {
-			if(shelx.symm[i].LATT == false) temp << "SYMM " << shelx.symm[i].sstr << endl;
+	if (filenamein.length() != 0) {
+		ifstream old(filenamein);
+		if (old.is_open() == true) {
+			nsShelxFile::ShelxData shelx(old);
+			cout << "Symmetry found." << endl;
+			Analize_symmety(shelx, El);
+			ofstream temp("a.ins", ios::app);
+			temp << "LATT " << shelx.LATT << endl;
+			for (int i = 0; i < shelx.symm.size(); i++) {
+				if (shelx.symm[i].LATT == false) temp << "SYMM " << shelx.symm[i].sstr << endl;
+			}
+			temp.close();
 		}
-		temp.close();
+		old.close();
 	}
-	old.close();
-
 	int j = 0;
 	int size = El.size();
 	for(int i = 0; i < size;i++) {
@@ -314,88 +343,3 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList) {
 	}
 	temp.swap(pList);
 }
-//void Analize_symmety_old(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList) {
-//	size_t size_a = shelx.atom.size();
-//	size_t size_s = shelx.symm.size();
-//	size_t size_el = pList.size();
-//
-//	for (int i = 0; i < size_el; i++) {
-//		char buf[5];
-//		strcpy(buf, pList[i].label.c_str());
-//		_strupr_s(buf);
-//		for (int j = 1; j < shelx.sfac.size(); j++) {
-//			if (shelx.sfac[j].compare(buf) != 0) continue;
-//			pList[i].type = j;
-//			break;
-//		}
-//	}
-//	vector<nsShelxFile::Atom> atsh(std::move(shelx.GenerateSymmAtom()));
-//	size_t size_ats = atsh.size();
-//	for (int j = -1; j <= 1; j++) {
-//		for (int k = -1; k <= 1; k++) {
-//			for (int l = -1; l <= 1; l++) {
-//				if (j == 0 && k == 0 && l == 0) continue;
-//				for (int i = 0; i < size_ats; i++) {
-//					atsh.push_back(atsh[i]);
-//					(atsh.back()).point += Point(j, k, l);
-//				}
-//			}
-//		}
-//	}
-//	size_ats = atsh.size();
-//	for (int i = 0; i < size_el; i++) {
-//		nsShelxFile::Atom * ap = &atsh[0];
-//		flo dp = (pList[i].vecPoints[0] - shelx.cell.FracToCart() * (atsh[0].point)).r();
-//		for (int j = 1; j < size_ats; j++) {
-//			if (atsh[j].type != pList[i].type) continue;
-//			flo tempdp = (pList[i].vecPoints[0] - shelx.cell.FracToCart() * (atsh[j].point)).r();
-//			if (tempdp >= dp) continue;
-//			dp = tempdp;
-//			ap = &(atsh[j]);
-//		}
-//		ap->point = pList[i].fracCenter;
-//		ap->dinmat = pList[i].dinmat;
-//		ap->type += 256;
-//	}
-//	{
-//		vector<nsShelxFile::Atom> tempA;
-//		tempA.swap(atsh);
-//		for (int i = 0; i < size_ats; i++) {
-//			if ((tempA[i].type & 256) != 0) {
-//				tempA[i].type -= 256;
-//				atsh.push_back(std::move(tempA[i]));
-//			}
-//		}
-//	}
-//	size_ats = atsh.size();
-//	vector<nsShelxFile::Atom> acpy(shelx.atom);
-//	for (int i = 0; i < size_a; i++) {
-//		acpy[i].dinmat = Dinmat();
-//		acpy[i].point = Point();
-//	}
-//	for (int i = 0; i < size_a; i++) {
-//		size_t count = 0;
-//		for (int j = 0; j < size_ats; j++) {
-//			if (strcmp(atsh[j].label, shelx.atom[i].label) != 0) continue;
-//			vector<nsShelxFile::Atom> atsh2(std::move(shelx.GenerateSymmAtom(atsh[j])));
-//			nsShelxFile::Atom * ap = &atsh2[0];
-//			flo dp = (shelx.cell.FracToCart() * (shelx.atom[i].point - (atsh2[0].point))).r();
-//			for (int k = 0; k < atsh2.size(); k++) {
-//				flo tempdp = (shelx.cell.FracToCart() * (shelx.atom[i].point - (atsh2[k].point))).r();
-//				if (tempdp >= dp) continue;
-//				dp = tempdp;
-//				ap = &(atsh2[k]);
-//			}
-//			//acpy[i].point += ap->point;
-//			//for (int k = 0; k < 6; k++)
-//			//acpy[i].dinmat.U[k] += ap->dinmat.U[k];
-//			count++;
-//		}
-//		cout << "Atom " << i << " connected to " << count << " atoms." << endl;
-//		acpy[i].point /= count;
-//		for (int k = 0; k < 6; k++)
-//			acpy[i].dinmat.U[k] /= count;
-//	}
-//
-//	shelx.atom.swap(acpy);
-//}
