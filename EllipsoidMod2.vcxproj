@@ -79,11 +79,6 @@
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
-  <ItemGroup>
-    <None Include="a.ins" />
-    <None Include="a.txt" />
-    <None Include="XDATCAR" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

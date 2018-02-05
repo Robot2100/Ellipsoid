@@ -30,9 +30,4 @@
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup>
-    <None Include="a.ins" />
-    <None Include="XDATCAR" />
-    <None Include="a.txt" />
-  </ItemGroup>
 </Project>
