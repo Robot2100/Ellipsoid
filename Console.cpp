@@ -7,8 +7,9 @@
 
 using namespace std;
 const int MAX_LINE = 128;
-//list<Point> points;
-//Point req[3];
+
+std::vector<Point> fPos;
+
 DWORD WINAPI ThreadProc( LPVOID lpParameter );
 Cell LoadXDATCAR(vector<Elipsoid> & pList);
 void OutIns(Elipsoid & el);
@@ -201,8 +202,10 @@ Cell LoadXDATCAR(vector<Elipsoid> & pList)
 		if (AllSteps == 2001 && cleared == false) { //!
 			vector<vector<Point>> tv2; 
 			tv2.resize(NAtoms);
+			fPos.resize(NAtoms);
 			tv2.swap(tempVec);
 			for (int i = 0; i < NAtoms; i++) {
+				fPos[i] = tv2[i].front();
 				tempVec[i].push_back(tv2[i].back());
 			}
 			AllSteps = 1;
@@ -288,7 +291,7 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList) {
 		for (int k = -_p; k <= _p; k++) {
 			for (int l = -_p; l <= _p; l++) {
 				for (int i = 0; i < size_el; i++,iter++) {
-					basis[iter] = shelx.cell.FracToCart() *( pList[i].vecPoints[0] + Point(j, k, l));
+					basis[iter] = shelx.cell.FracToCart() *( fPos[i] + Point(j, k, l));
 				}
 			}
 		}
@@ -302,7 +305,7 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList) {
 		// Декартовы точки после операции симметрии
 		vector<Point> pvec(size_el);
 		for (int i = 0; i < size_el; i++) {
-			pvec[i] = shelx.cell.FracToCart() * (shelx.symm[s].GenSymm(pList[i].vecPoints[0]));
+			pvec[i] = shelx.cell.FracToCart() * (shelx.symm[s].GenSymm(fPos[i]));
 		}
 		for (size_t i = 0; i < size_el; i++) {
 			flo drm = (flo)1.0;
@@ -318,7 +321,7 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList) {
 			if (i == j2 || table[i][j2].size() != 0) 
 				continue;
 			table[i][j2].push_back(&mirror[s]);
-			addtable[i][j2] = shelx.cell.CartToFrac()*basis[j1] - pList[j2].vecPoints[0];
+			addtable[i][j2] = shelx.cell.CartToFrac()*basis[j1] - fPos[j2];
 		}
 	}
 	{
@@ -364,7 +367,7 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList) {
 				for (int k2 = 0; k2 < table[i][j].size(); k2++) {
 					pList[i].vecPoints[k] = (table[i][j][k2]->RetroGenSymm(pList[i].vecPoints[k]));
 				}
-				Point dfix = pList[i].vecPoints[k] + Point(100.5, 100.5, 100.5) - pList[i].vecPoints[0];
+				Point dfix = pList[i].vecPoints[k] + Point(100.5, 100.5, 100.5) - fPos[i];
 				dfix = (Point(100, 100, 100) - Point(int(dfix.a[0]), int(dfix.a[1]), int(dfix.a[2])));
 				pList[i].vecPoints[k] += dfix;
 
