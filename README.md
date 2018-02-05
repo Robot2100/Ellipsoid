@@ -1,11 +1,16 @@
 # Ellipsoid
 
-Calculate thermal ellipsoids and create shelx file from XDATCAR (VASP output).
+  Calculate thermal ellipsoids and create shelx file from XDATCAR (VASP output).
 
-**Version** | [1.0.1](https://github.com/Robot2100/Ellipsoid/releases)
+  This program uses [Includes](https://github.com/Robot2100/Includes).
+  
+  
+Program | Version
 --- | ---
+Elipsoid | **[1.0.0](https://github.com/Robot2100/Ellipsoid/releases)**
+Includes | **[1.0.0](https://github.com/Robot2100/Ellipsoid/releases)**
 
-#### Parameters:
+### Parameters:
 
 **(optional) <Shelx_file>** 
 
