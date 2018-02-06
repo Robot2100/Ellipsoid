@@ -1,8 +1,5 @@
-// Console.cpp: îïðåäåëÿåò òî÷êó âõîäà äëÿ êîíñîëüíîãî ïðèëîæåíèÿ.
-//
-
 #include "stdafx.h"
-#include "../Includes/Includes.h"
+#include "../../Includes/Includes.h"
 
 
 using namespace std;
@@ -239,9 +236,9 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList) {
 	constexpr size_t _d = 2*_p+1;
 	constexpr size_t _sizemod = (_d*_d*_d);
 	size_t size_b = size_el*_sizemod;
-	// Íåïîäâèæíàÿ Äåêàðòîâà ñóïåðÿ÷åéêà
 	vector<Point> basis(size_b);
-	// Çàïîëíåíèå Áàçèñà êîïèåé íà÷àëüíûõ ïîëîæåíèé àòîìîâ ñóïåðÿ÷åéêè
+
+
 	for (int j = -_p, iter = 0; j <= _p; j++) {
 		for (int k = -_p; k <= _p; k++) {
 			for (int l = -_p; l <= _p; l++) {
@@ -255,9 +252,10 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList) {
 	for (int i = 0; i < size_s; i++) {
 		mirror.push_back((shelx.symm[i].MirrorSymm()));
 	}
-	// Ñîñòàâëåíèå ïåðâîãî êðóãà òàáëèöû ñâÿçíîñòè
+
+
+
 	for (int s = 0; s < size_s; s++) {
-		// Äåêàðòîâû òî÷êè ïîñëå îïåðàöèè ñèììåòðèè
 		vector<Point> pvec(size_el);
 		for (int i = 0; i < size_el; i++) {
 			pvec[i] = shelx.cell.FracToCart() * (shelx.symm[s].GenSymm(fPos[i]));
@@ -280,9 +278,11 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList) {
 		}
 	}
 	{
-		// Áûëè ëè èçìåíåíèÿ
+
+
+
+
 		bool changed = false;
-		// Ïîëíîå ñâåäåíèå òàáëèöû ñâÿçíîñòè 
 		do {
 			changed = false;
 			for (size_t i = 0; i < size_el; i++) {
@@ -302,7 +302,10 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList) {
 			}
 		} while (changed == true);
 	}
-	// Ïåðåâîä òî÷åê ïî ñõåìå
+
+
+
+
 	vector<Point> dcheck;
 	{
 		size_t size_l = pList[0].vecPoints.size();
