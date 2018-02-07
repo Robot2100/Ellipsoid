@@ -247,5 +247,5 @@ ModelManifest.xml
 
 # FAKE - F# Make
 .fake/
-/.olex
-/new.ins
+.olex/
+
