@@ -4,7 +4,7 @@
 
 using namespace std;
 constexpr int MAX_LINE = 128;
-constexpr size_t cutoff = 2000;
+size_t cutoff = 2000;
 string filenamein;
 
 std::vector<Point> fPos;
@@ -17,11 +17,19 @@ void ffunc(const int l, std::vector<string> & in) {
 	auto size = in.size();
 	switch(l) {
 	case 0:
-		if (size != 0)
+		if (size == 1)
 			filenamein = std::move(in[0]);
+		else
+			throw invalid_argument("Wrong number of parameters. ");
 		break;
 	case 1:
 		help = true;
+		break;
+	case 2:
+		if (size == 1)
+			cutoff = atof(in[0].c_str());
+		else
+			throw invalid_argument("Wrong number of parameters of '-cut'. ");
 		break;
 	case -1: 
 		if (help) {
@@ -31,12 +39,17 @@ void ffunc(const int l, std::vector<string> & in) {
 		}
 	}
 }
+
+
+
+
 int main(int argn, char * argv[]) {
 	{
-		constexpr BaseParam bp[2]{ {"","Input shelx file (optional)"},
-									{"-help", "View help information"} };
-		constexpr ConstParam<2> cp(bp);
-		Param<2> param(&cp);
+		constexpr BaseParam bp[] { {"","<Filename> Input shelx file (optional)"},
+									{"-help", "View help information"},
+									{"-cut", "<INT> Ignore first N steps"} };
+		constexpr ConstParam<3> cp(bp);
+		Param<3> param(&cp);
 		try {
 			param.TakeAgrs(argn, argv, ffunc);
 		}
@@ -45,6 +58,7 @@ int main(int argn, char * argv[]) {
 			return 1;
 		}
 	}
+	cout << "Ignore first " << cutoff << " steps." << endl;
 	bool is_SYMM = false;
 	nsShelxFile::ShelxData shelx;
 	if (filenamein.length() != 0) {
@@ -67,6 +81,7 @@ int main(int argn, char * argv[]) {
 	if (is_SYMM == true) {
 		Analize_symmety(shelx, El);
 	}
+	cout << "Symmetry analise complited." << endl;
 	size_t Elsize = El.size();
 	{
 		vector<nsShelxFile::Atom> atombuf;
@@ -76,8 +91,10 @@ int main(int argn, char * argv[]) {
 		}
 		shelx.atom = move(atombuf);
 	}
+	cout << "Writing to file 'a.ins'." << endl;
 	ofstream out("a.ins");
 	shelx.OutIns(out);
+	cout << "Program normal termination. " << endl;
 	return 0;
 }
 void LoadXDATCAR(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList)
