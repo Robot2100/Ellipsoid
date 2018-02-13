@@ -10,6 +10,7 @@ string filenamein;
 std::vector<Point> fPos;
 void LoadXDATCAR(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList);
 int _sign(flo a);
+Point TakePoint(istream & file, const size_t NAtoms);
 void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList);
 void ffunc(const int l, std::vector<string> & in) {
 	bool help = false;
@@ -75,7 +76,8 @@ int main(int argn, char * argv[]) {
 		}
 		shelx.atom = move(atombuf);
 	}
-
+	ofstream out("a.ins");
+	shelx.OutIns(out);
 	return 0;
 }
 void LoadXDATCAR(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList)
@@ -131,92 +133,67 @@ void LoadXDATCAR(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList)
 	pList.resize(NAtoms);
 	for (int i = 0, k = 0; i < size; i++) {
 		for (int j = 1; j <= shelx.unit[i]; j++, k++) {
-			char str[5];
-			sprintf(str, "%s%d", shelx.sfac[i], j);
+			char str[128];
+			sprintf(str, "%s%d", shelx.sfac[i].c_str(), j);
 			shelx.atom.push_back(nsShelxFile::Atom(str, i + 1, Point(), flo(1.0), Dinmat()));
 		}
 	}
 	file.getline(buf, MAX_LINE);
-
+	fPos.reserve(NAtoms);
 	for (int i = 0; i<NAtoms; i++) {
-		pList[i].push_back(TakePoint(file, NAtoms));
+		Point p(TakePoint(file, NAtoms));
+		pList[i].push_back(p);
+		fPos.push_back(p);
 	}
-	int Counter = 0;
-	int AllSteps = 0;
+
+	int Counter = 1;
+	int AllSteps = 1;
+	for (int k = 1; k < cutoff && !file.eof(); k++) {
+		file.getline(buf,MAX_LINE);
+		for (size_t i = 0; i < NAtoms; i++) {
+			file.getline(buf, MAX_LINE);
+		}
+		Counter++;
+		if (Counter % 100 == 0) {
+			cout  << Counter << " steps skipped." << endl;
+		}
+	}
 	while (!file.eof()) {
 		file.getline(buf, MAX_LINE);
 
 		for (int i = 0; i<NAtoms; i++) {
-			Point p;
-			file >> buf;
-			p.a[0] = (flo)atof(buf);
-			file >> buf;
-			p.a[1] = (flo)atof(buf);
-			file >> buf;
-			p.a[2] = (flo)atof(buf);
-			tempVec[i].push_back(p);
+			pList[i].push_back(TakePoint(file, NAtoms));
 		}
-
-		if (AllSteps != 0) {
-			for (int i = 0; i<NAtoms; i++) {
-				Point dp = tempVec[i][AllSteps] - tempVec[i][AllSteps - 1];
-				for (int j = 0; j < 3; j++) {
-					if (abs(dp.a[j]) > 0.5)
-						tempVec[i][AllSteps].a[j] -= _sign(dp.a[j]);
-					else dp.a[j] = 0;
-				}
+		for (int i = 0; i<NAtoms; i++) {
+			Point dp = pList[i][AllSteps] - pList[i][AllSteps - 1];
+			for (int j = 0; j < 3; j++) {
+				if (abs(dp.a[j]) > 0.5)
+					pList[i][AllSteps].a[j] -= _sign(dp.a[j]);
+				else dp.a[j] = 0;
 			}
 		}
 		AllSteps++;
-		if (AllSteps == 2001 && cleared == false) { //!
-			vector<vector<Point>> tv2; 
-			tv2.resize(NAtoms);
-			fPos.resize(NAtoms);
-			tv2.swap(tempVec);
-			for (int i = 0; i < NAtoms; i++) {
-				fPos[i] = tv2[i].front();
-				tempVec[i].push_back(tv2[i].back());
-			}
-			AllSteps = 1;
-			cleared = true;
-		}
-		file.getline(buf, MAX_LINE);
 		Counter++;
 		if (Counter%100 == 0) {
-			cout << "Step " << Counter << " readed." << endl;
+			cout << Counter << " steps readed. Step " << AllSteps-1 << " uses." << endl;
 		}
 	}
 	cout << "Last step " << Counter-1 << " readed." << endl;
 
 	for (int i = 0; i < NAtoms; i++) {
-		tempVec[i].pop_back();
-		tempVec[i].shrink_to_fit();
-		pList[i].AddVecPoints(move(tempVec[i]), true);
+		pList[i].pop_back();
+		pList[i].shrink_to_fit();
 	}
-	cout << "VecPoints added." << endl;
 
 }
 
-void OutIns(Elipsoid & el)
-{
-	ofstream file("a.ins",ios::app);
-	if (file.is_open()) {
-	} else {
-		cout << "Error! File not opened." << endl;
-	}
-
-	file << el.OutShelxString() << endl;
-
-	file.close();
-
-}
 int _sign(flo a) {
 	if (a < 0) return -1;
 	else return 1;
 }
-void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList) {
+
+void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList) {
 	using namespace nsShelxFile;
-	shelx.cell = (*(pList[0].pCell));
 	size_t size_s = shelx.symm.size();
 	size_t size_el = pList.size();
 	vector<vector<vector<SYMM*> > > table(size_el, vector<vector<SYMM*> >(size_el));
@@ -297,43 +274,46 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<Elipsoid> & pList) {
 
 	vector<Point> dcheck;
 	{
-		size_t size_l = pList[0].vecPoints.size();
+		size_t size_l = pList[0].size();
 		for (int i = 0; i < size_el; i++) {
 			if (table[i].size() == 0) continue;
 			for (int j = 0; j < size_el; j++) {
-				if (table[i][j].size() == 0 || pList[j].vecPoints.size() == 0) continue;
-				size_t k = pList[i].vecPoints.size();
-				pList[i].vecPoints.reserve(k + pList[j].vecPoints.size());
-				pList[i].vecPoints.insert(pList[i].vecPoints.end(),
-					std::make_move_iterator(pList[j].vecPoints.begin()),
-					std::make_move_iterator(pList[j].vecPoints.end()));
-				pList[j].vecPoints.clear();
-				pList[j].useVecPoints = false;
-				size_t it = pList[i].vecPoints.size();
+				if (table[i][j].size() == 0 || pList[j].size() == 0) continue;
+				size_t k = pList[i].size();
+				pList[i].reserve(k + pList[j].size());
+				pList[i].insert(pList[i].end(),
+					std::make_move_iterator(pList[j].begin()),
+					std::make_move_iterator(pList[j].end()));
+				pList[j].clear();
+				size_t it = pList[i].size();
 
 				for (int k2 = 0; k2 < table[i][j].size(); k2++) {
-					pList[i].vecPoints[k] = (table[i][j][k2]->RetroGenSymm(pList[i].vecPoints[k]));
+					pList[i][k] = (table[i][j][k2]->RetroGenSymm(pList[i][k]));
 				}
-				Point dfix = pList[i].vecPoints[k] + Point(100.5, 100.5, 100.5) - fPos[i];
+				Point dfix = pList[i][k] + Point(100.5, 100.5, 100.5) - fPos[i];
 				dfix = (Point(100, 100, 100) - Point(int(dfix.a[0]), int(dfix.a[1]), int(dfix.a[2])));
-				pList[i].vecPoints[k] += dfix;
+				pList[i][k] += dfix;
 
 				for (++k; k < it; k++) {
 					for (int k2 = 0; k2 < table[i][j].size(); k2++) {
-						pList[i].vecPoints[k] = (table[i][j][k2]->RetroGenSymm(pList[i].vecPoints[k]));
+						pList[i][k] = (table[i][j][k2]->RetroGenSymm(pList[i][k]));
 					}
-					pList[i].vecPoints[k] += dfix;
+					pList[i][k] += dfix;
 				}
-				dcheck.push_back(pList[i].vecPoints.back());
+				dcheck.push_back(pList[i].back());
 			}
 		}
 	}
-	vector<Elipsoid> temp;
+	std::remove_reference<decltype(pList)>::type temp;
+	decltype(shelx.atom) tempAtom;
 	for (int i = 0; i < size_el; i++) {
-		if(pList[i].useVecPoints == true)
+		if (pList[i].empty() == false) {
 			temp.push_back(move(pList[i]));
+			tempAtom.push_back(move(shelx.atom[i]));
+		}
 	}
-	temp.swap(pList);
+	pList = move(temp);
+	shelx.atom = move(tempAtom);
 }
 Point TakePoint(istream & file, const size_t NAtoms) {
 	char buf[MAX_LINE];
