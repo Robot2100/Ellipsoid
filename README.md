@@ -1,11 +1,11 @@
 # Ellipsoid
 
-[![Version](https://img.shields.io/badge/Version-1.0.1-brightgreen.svg?style=plastic)](https://github.com/Robot2100/Ellipsoid/releases)
+[![Version](https://img.shields.io/badge/Version-1.1.0-brightgreen.svg?style=plastic)](https://github.com/Robot2100/Ellipsoid/releases)
 
 
   Calculate thermal ellipsoids and create shelx file from XDATCAR (VASP output).
 
-#### This program uses [![Includes](https://img.shields.io/badge/Includes-1.0.0-orange.svg)](https://github.com/Robot2100/Includes/releases/tag/1.0.0)
+#### This program uses [![Includes](https://img.shields.io/badge/Includes-1.0.2-orange.svg)](https://github.com/Robot2100/Includes/releases/tag/1.0.2)
   
 
 ### Parameters:
