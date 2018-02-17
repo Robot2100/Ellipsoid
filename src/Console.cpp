@@ -20,23 +20,14 @@ void ffunc(const int l, std::vector<string> & in) {
 		if (size == 1)
 			filenamein = std::move(in[0]);
 		else
-			throw invalid_argument("Wrong number of parameters. ");
+			throw invalid_argument("Wrong number of parameters.");
 		break;
 	case 1:
-		help = true;
-		break;
-	case 2:
 		if (size == 1)
 			cutoff = atof(in[0].c_str());
 		else
-			throw invalid_argument("Wrong number of parameters of '-cut'. ");
+			throw invalid_argument("Wrong number of parameters of '-cut'.");
 		break;
-	case -1: 
-		if (help) {
-			for (int i = 0; i < size; i++)
-				cout << in[i] << endl;
-			exit(0);
-		}
 	}
 }
 
@@ -44,17 +35,22 @@ void ffunc(const int l, std::vector<string> & in) {
 
 
 int main(int argn, char * argv[]) {
+	ios::sync_with_stdio(false);
 	{
-		constexpr BaseParam bp[] { {"","<Filename> Input shelx file (optional)"},
-									{"-help", "View help information"},
-									{"-cut", "<INT> Ignore first N steps"} };
-		constexpr ConstParam<3> cp(bp);
-		Param<3> param(&cp);
+		constexpr BaseParam bp[] {	
+			{"",	"",		"<Filename>",	"Take symmetry from shelx file [optional]"},
+			{"c",	"cut",	"<N>",			"Ignore first N steps [default=2000]" } };
+		Param<2> param(bp);
 		try {
 			param.TakeAgrs(argn, argv, ffunc);
 		}
+		catch (ParamException inv) {
+			cout << "Error! Unknown parameter: " << inv.what()
+				<< "\nUse -h or --help parameter for more information." << endl;
+			return 1;
+		}
 		catch (invalid_argument inv) {
-			cout << "Error! Program termination. Reason:" << endl << inv.what() << endl;
+			cout << "Error! Program termination. Reason:\n" << inv.what() << endl;
 			return 1;
 		}
 	}
