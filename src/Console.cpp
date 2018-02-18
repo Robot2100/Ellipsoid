@@ -40,20 +40,21 @@ int main(int argn, char * argv[]) {
 		constexpr BaseParam bp[] {	
 			{"",	"",		"<Filename>",	"Take symmetry from shelx file [optional]"},
 			{"c",	"cut",	"<N>",			"Ignore first N steps [default=2000]" } };
-		Param<2> param(bp);
+		constexpr Param<2> param(bp);
 		try {
 			param.TakeAgrs(argn, argv, ffunc);
 		}
-		catch (ParamException inv) {
+		catch (ParamException & inv) {
 			cout << "Error! Unknown parameter: " << inv.what()
 				<< "\nUse -h or --help parameter for more information." << endl;
 			return 1;
 		}
-		catch (invalid_argument inv) {
+		catch (invalid_argument & inv) {
 			cout << "Error! Program termination. Reason:\n" << inv.what() << endl;
 			return 1;
 		}
 	}
+	cout << "Program Ellipsoid. Version 1.1.1\n" << endl;
 	cout << "Ignore first " << cutoff << " steps." << endl;
 	bool is_SYMM = false;
 	nsShelxFile::ShelxData shelx;
