@@ -1,5 +1,4 @@
 #include "stdafx.h"
-#include "../Includes/Includes.h"
 
 
 using namespace std;
@@ -48,7 +47,7 @@ int main(int argn, char * argv[]) {
 			cout << "Error! Program termination. Reason:\n" << inv.what() << endl;
 			return 1;
 		}
-		catch (ParamException & inv) {
+		catch (IncExceptions::ParamException & inv) {
 			cout << "Error! Unknown parameter: " << inv.what()
 				<< "\nUse -h or --help parameter for more information." << endl;
 			return 1;
@@ -218,7 +217,6 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 	size_t size_b = size_el*_sizemod;
 	vector<Point> basis(size_b);
 
-
 	for (int j = -_p, iter = 0; j <= _p; j++) {
 		for (int k = -_p; k <= _p; k++) {
 			for (int l = -_p; l <= _p; l++) {
@@ -228,12 +226,11 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 			}
 		}
 	}
+
 	vector<nsShelxFile::SYMM> mirror;
 	for (size_t i = 0; i < size_s; i++) {
 		mirror.push_back((shelx.symm[i].MirrorSymm()));
 	}
-
-
 
 	for (size_t s = 0; s < size_s; s++) {
 		vector<Point> pvec(size_el);
@@ -257,11 +254,8 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 			addtable[i][j2] = shelx.cell.CartToFrac()*basis[j1] - fPos[j2];
 		}
 	}
+
 	{
-
-
-
-
 		bool changed = false;
 		do {
 			changed = false;
@@ -282,9 +276,6 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 			}
 		} while (changed == true);
 	}
-
-
-
 
 	vector<Point> dcheck;
 	{
@@ -318,6 +309,7 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 			}
 		}
 	}
+
 	std::remove_reference<decltype(pList)>::type temp;
 	decltype(shelx.atom) tempAtom;
 	for (size_t i = 0; i < size_el; i++) {
