@@ -24,7 +24,7 @@ void ffunc(const int l, std::vector<string> & in) {
 		break;
 	case 1:
 		if (size == 1)
-			cutoff = atof(in[0].c_str());
+			cutoff = static_cast<size_t>(stoi(in[0]));
 		else
 			throw invalid_argument("Wrong number of parameters of '-cut'.");
 		break;
@@ -44,13 +44,13 @@ int main(int argn, char * argv[]) {
 		try {
 			param.TakeAgrs(argn, argv, ffunc);
 		}
+		catch (invalid_argument & inv) {
+			cout << "Error! Program termination. Reason:\n" << inv.what() << endl;
+			return 1;
+		}
 		catch (ParamException & inv) {
 			cout << "Error! Unknown parameter: " << inv.what()
 				<< "\nUse -h or --help parameter for more information." << endl;
-			return 1;
-		}
-		catch (invalid_argument & inv) {
-			cout << "Error! Program termination. Reason:\n" << inv.what() << endl;
 			return 1;
 		}
 	}
@@ -137,7 +137,7 @@ void LoadXDATCAR(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList)
 
 	for (size_t i = 0; i < size; i++) {
 		file >> buf;
-		shelx.unit[i] = atof(buf);
+		shelx.unit[i] = atoi(buf);
 	}
 	file.getline(buf, MAX_LINE);
 
@@ -145,16 +145,16 @@ void LoadXDATCAR(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList)
 		NAtoms += shelx.unit[i];
 	}
 	pList.resize(NAtoms);
-	for (int i = 0, k = 0; i < size; i++) {
-		for (int j = 1; j <= shelx.unit[i]; j++, k++) {
+	for (size_t i = 0, k = 0; i < size; i++) {
+		for (size_t j = 1; j <= shelx.unit[i]; j++, k++) {
 			char str[128];
-			sprintf(str, "%s%d", shelx.sfac[i].c_str(), j);
+			sprintf_s(str, "%s%d", shelx.sfac[i].c_str(), j);
 			shelx.atom.push_back(nsShelxFile::Atom(str, i + 1, Point(), flo(1.0), Dinmat()));
 		}
 	}
 	file.getline(buf, MAX_LINE);
 	fPos.reserve(NAtoms);
-	for (int i = 0; i<NAtoms; i++) {
+	for (size_t i = 0; i<NAtoms; i++) {
 		Point p(TakePoint(file, NAtoms));
 		pList[i].push_back(p);
 		fPos.push_back(p);
@@ -162,7 +162,7 @@ void LoadXDATCAR(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList)
 
 	int Counter = 1;
 	int AllSteps = 1;
-	for (int k = 1; k < cutoff && !file.eof(); k++) {
+	for (size_t k = 1; k < cutoff && !file.eof(); k++) {
 		file.getline(buf,MAX_LINE);
 		for (size_t i = 0; i < NAtoms; i++) {
 			file.getline(buf, MAX_LINE);
@@ -175,12 +175,12 @@ void LoadXDATCAR(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList)
 	while (!file.eof()) {
 		file.getline(buf, MAX_LINE);
 
-		for (int i = 0; i<NAtoms; i++) {
+		for (size_t i = 0; i<NAtoms; i++) {
 			pList[i].push_back(TakePoint(file, NAtoms));
 		}
-		for (int i = 0; i<NAtoms; i++) {
+		for (size_t i = 0; i<NAtoms; i++) {
 			Point dp = pList[i][AllSteps] - pList[i][AllSteps - 1];
-			for (int j = 0; j < 3; j++) {
+			for (size_t j = 0; j < 3; j++) {
 				if (abs(dp.a[j]) > 0.5)
 					pList[i][AllSteps].a[j] -= _sign(dp.a[j]);
 				else dp.a[j] = 0;
@@ -194,7 +194,7 @@ void LoadXDATCAR(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList)
 	}
 	cout << "Last step " << Counter-1 << " readed." << endl;
 
-	for (int i = 0; i < NAtoms; i++) {
+	for (size_t i = 0; i < NAtoms; i++) {
 		pList[i].pop_back();
 		pList[i].shrink_to_fit();
 	}
@@ -222,22 +222,22 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 	for (int j = -_p, iter = 0; j <= _p; j++) {
 		for (int k = -_p; k <= _p; k++) {
 			for (int l = -_p; l <= _p; l++) {
-				for (int i = 0; i < size_el; i++,iter++) {
+				for (size_t i = 0; i < size_el; i++,iter++) {
 					basis[iter] = shelx.cell.FracToCart() *( fPos[i] + Point(j, k, l));
 				}
 			}
 		}
 	}
 	vector<nsShelxFile::SYMM> mirror;
-	for (int i = 0; i < size_s; i++) {
+	for (size_t i = 0; i < size_s; i++) {
 		mirror.push_back((shelx.symm[i].MirrorSymm()));
 	}
 
 
 
-	for (int s = 0; s < size_s; s++) {
+	for (size_t s = 0; s < size_s; s++) {
 		vector<Point> pvec(size_el);
-		for (int i = 0; i < size_el; i++) {
+		for (size_t i = 0; i < size_el; i++) {
 			pvec[i] = shelx.cell.FracToCart() * (shelx.symm[s].GenSymm(fPos[i]));
 		}
 		for (size_t i = 0; i < size_el; i++) {
@@ -289,9 +289,9 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 	vector<Point> dcheck;
 	{
 		size_t size_l = pList[0].size();
-		for (int i = 0; i < size_el; i++) {
+		for (size_t i = 0; i < size_el; i++) {
 			if (table[i].size() == 0) continue;
-			for (int j = 0; j < size_el; j++) {
+			for (size_t j = 0; j < size_el; j++) {
 				if (table[i][j].size() == 0 || pList[j].size() == 0) continue;
 				size_t k = pList[i].size();
 				pList[i].reserve(k + pList[j].size());
@@ -301,7 +301,7 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 				pList[j].clear();
 				size_t it = pList[i].size();
 
-				for (int k2 = 0; k2 < table[i][j].size(); k2++) {
+				for (size_t k2 = 0; k2 < table[i][j].size(); k2++) {
 					pList[i][k] = (table[i][j][k2]->RetroGenSymm(pList[i][k]));
 				}
 				Point dfix = pList[i][k] + Point(100.5, 100.5, 100.5) - fPos[i];
@@ -309,7 +309,7 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 				pList[i][k] += dfix;
 
 				for (++k; k < it; k++) {
-					for (int k2 = 0; k2 < table[i][j].size(); k2++) {
+					for (size_t k2 = 0; k2 < table[i][j].size(); k2++) {
 						pList[i][k] = (table[i][j][k2]->RetroGenSymm(pList[i][k]));
 					}
 					pList[i][k] += dfix;
@@ -320,7 +320,7 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 	}
 	std::remove_reference<decltype(pList)>::type temp;
 	decltype(shelx.atom) tempAtom;
-	for (int i = 0; i < size_el; i++) {
+	for (size_t i = 0; i < size_el; i++) {
 		if (pList[i].empty() == false) {
 			temp.push_back(move(pList[i]));
 			tempAtom.push_back(move(shelx.atom[i]));
