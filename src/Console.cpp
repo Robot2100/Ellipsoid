@@ -147,7 +147,7 @@ void LoadXDATCAR(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList)
 	for (size_t i = 0, k = 0; i < size; i++) {
 		for (size_t j = 1; j <= shelx.unit[i]; j++, k++) {
 			char str[128];
-			sprintf_s(str, "%s%d", shelx.sfac[i].c_str(), j);
+			sprintf_s(str, "%s%d", shelx.sfac[i].c_str(), static_cast<int>(j));
 			shelx.atom.push_back(nsShelxFile::Atom(str, i + 1, Point(), flo(1.0), Dinmat()));
 		}
 	}
