@@ -2,12 +2,12 @@
 
 
 using namespace std;
+
 constexpr int MAX_LINE = 128;
 size_t cutoff = 2000;
 string filenamein;
 
 std::vector<Point> fPos;
-int _sign(flo a);
 void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList);
 void ffunc(const int l, std::vector<string> & in) {
 	bool help = false;
@@ -17,41 +17,50 @@ void ffunc(const int l, std::vector<string> & in) {
 		if (size == 1)
 			filenamein = std::move(in[0]);
 		else
-			throw invalid_argument("Wrong number of parameters.");
+			throw invalid_argument("Wrong number of parameters. Must be equal 1.");
 		break;
 	case 1:
 		if (size == 1)
 			cutoff = static_cast<size_t>(stoi(in[0]));
 		else
-			throw invalid_argument("Wrong number of parameters of '-cut'.");
+			throw invalid_argument("Wrong number of parameters of '-c' or '--cut'. Must be equal 1.");
+		break;
+	case 2:
+		if (size == 0)
+			cout.rdbuf(NULL);
+		else
+			throw invalid_argument("Wrong number of parameters of '-q' or '--quiet'. Must be equal 0.");
 		break;
 	}
 }
 
 
-
-
 int main(int argn, char * argv[]) {
 	ios::sync_with_stdio(false);
 	{
-		constexpr BaseParam bp[] {	
+		constexpr BaseParam bp[]{
 			{"",	"",		"<Filename>",	"Take symmetry from shelx file [optional]"},
-			{"c",	"cut",	"<N>",			"Ignore first N steps [default=2000]" } };
-		constexpr Param<2> param(bp);
+			{ "c",	"cut",	"<N>",			"Ignore first N steps [default=2000]" },
+			{ "q", "quiet", "", "Output only error messages." } };
+		constexpr Param<3> param(bp);
 		try {
 			param.TakeAgrs(argn, argv, ffunc);
 		}
 		catch (invalid_argument & inv) {
-			cout << "Error! Program termination. Reason:\n" << inv.what() << endl;
+			cerr << "Error! Program termination. Reason:\n" << inv.what() << endl;
 			return 1;
 		}
 		catch (IncExceptions::ParamException & inv) {
-			cout << "Error! Unknown parameter: " << inv.what()
+			cerr << "Error! Unknown parameter: " << inv.what()
 				<< "\nUse -h or --help parameter for more information." << endl;
 			return 1;
 		}
+		catch (...) {
+			cerr << "Unknown error during parsing parameters." << endl;
+			return 1;
+		}
 	}
-	cout << "Program Ellipsoid. Version 1.1.1\n" << endl;
+	cout << "Program Ellipsoid. Version 1.1.2\n" << endl;
 	cout << "Ignore first " << cutoff << " steps." << endl;
 	bool is_SYMM = false;
 	nsShelxFile::ShelxData shelx;
@@ -69,8 +78,22 @@ int main(int argn, char * argv[]) {
 		}
 		old.close();
 	}
-	vector<vector<Point> > El = shelx.LoadXDATCAR(cutoff, &fPos);
-
+	vector<vector<Point> > El;
+	try {
+		El = shelx.LoadXDATCAR(cutoff, &fPos);
+	}
+	catch (IncExceptions::OpenXDATCAR_Exception & ex) {
+		cerr << ex.what() << endl;
+		return 1;
+	}
+	catch (IncExceptions::ReadXDATCAR_Exception & ex) {
+		cerr << ex.what() << endl;
+		return 1;
+	}
+	catch (...) {
+		cerr << "Unknown error during loading XDATCAR file." << endl;
+		return 1;
+	}
 
 	if (is_SYMM == true) {
 		Analize_symmety(shelx, El);
@@ -91,12 +114,6 @@ int main(int argn, char * argv[]) {
 	cout << "Program normal termination. " << endl;
 	return 0;
 }
-
-int _sign(flo a) {
-	if (a < 0) return -1;
-	else return 1;
-}
-
 void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList) {
 	using namespace nsShelxFile;
 	size_t size_s = shelx.symm.size();
@@ -119,9 +136,9 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 		}
 	}
 
-	vector<nsShelxFile::SYMM> mirror;
+	vector<nsShelxFile::SYMM> mirror(size_s);
 	for (size_t i = 0; i < size_s; i++) {
-		mirror.push_back((shelx.symm[i].MirrorSymm()));
+		mirror[i] = shelx.symm[i].MirrorSymm();
 	}
 
 	for (size_t s = 0; s < size_s; s++) {
@@ -169,8 +186,8 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 		} while (changed == true);
 	}
 
-	vector<Point> dcheck;
 	{
+		vector<Point> dcheck;
 		size_t size_l = pList[0].size();
 		for (size_t i = 0; i < size_el; i++) {
 			if (table[i].size() == 0) continue;
