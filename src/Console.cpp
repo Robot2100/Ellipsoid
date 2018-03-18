@@ -7,9 +7,7 @@ size_t cutoff = 2000;
 string filenamein;
 
 std::vector<Point> fPos;
-void LoadXDATCAR(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList);
 int _sign(flo a);
-Point TakePoint(istream & file, const size_t NAtoms);
 void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList);
 void ffunc(const int l, std::vector<string> & in) {
 	bool help = false;
@@ -71,8 +69,8 @@ int main(int argn, char * argv[]) {
 		}
 		old.close();
 	}
-	vector<vector<Point> > El;
-	LoadXDATCAR(shelx,El);
+	vector<vector<Point> > El = shelx.LoadXDATCAR(cutoff, &fPos);
+
 
 	if (is_SYMM == true) {
 		Analize_symmety(shelx, El);
@@ -92,112 +90,6 @@ int main(int argn, char * argv[]) {
 	shelx.OutIns(out);
 	cout << "Program normal termination. " << endl;
 	return 0;
-}
-void LoadXDATCAR(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList)
-{
-	shelx.sfac.clear();
-	size_t NAtoms = 0;
-	constexpr char fName[] = "XDATCAR";
-	ifstream file(fName);
-	if (file.is_open()) {
-		cout << "XDATCAR opened." << endl;
-	}
-	else {
-		cout << "Error! XDATCAR not opened." << endl;
-		exit(10);
-	}
-	char buf[MAX_LINE];
-
-	file.getline(buf, MAX_LINE);
-	file.getline(buf, MAX_LINE);
-	flo U[9];
-	
-	file >> U[0] >> U[1] >> U[2];
-	file >> U[3] >> U[4] >> U[5];
-	file >> U[6] >> U[7] >> U[8];
-	shelx.cell = Cell(Matrix(&U[0], 3, 3), true);
-
-	file.getline(buf, MAX_LINE);
-
-
-	file.getline(buf, MAX_LINE);
-	std::stringstream str(buf);
-	while (!str.eof()) {
-		string temp;
-		str >> temp;
-		shelx.sfac.push_back(move(temp));
-	}
-	shelx.sfac.pop_back();
-	shelx.sfac.shrink_to_fit();
-	size_t size = shelx.sfac.size();
-
-	shelx.unit.reserve(size);
-	shelx.unit.resize(size);
-
-	for (size_t i = 0; i < size; i++) {
-		file >> buf;
-		shelx.unit[i] = atoi(buf);
-	}
-	file.getline(buf, MAX_LINE);
-
-	for (size_t i = 0; i < size; i++) {
-		NAtoms += shelx.unit[i];
-	}
-	pList.resize(NAtoms);
-	for (size_t i = 0, k = 0; i < size; i++) {
-		for (size_t j = 1; j <= shelx.unit[i]; j++, k++) {
-			char str[128];
-			sprintf_s(str, "%s%d", shelx.sfac[i].c_str(), static_cast<int>(j));
-			shelx.atom.push_back(nsShelxFile::Atom(str, i + 1, Point(), flo(1.0), Dinmat()));
-		}
-	}
-	file.getline(buf, MAX_LINE);
-	fPos.reserve(NAtoms);
-	for (size_t i = 0; i<NAtoms; i++) {
-		Point p(TakePoint(file, NAtoms));
-		pList[i].push_back(p);
-		fPos.push_back(p);
-	}
-
-	int Counter = 1;
-	int AllSteps = 1;
-	for (size_t k = 1; k < cutoff && !file.eof(); k++) {
-		file.getline(buf,MAX_LINE);
-		for (size_t i = 0; i < NAtoms; i++) {
-			file.getline(buf, MAX_LINE);
-		}
-		Counter++;
-		if (Counter % 100 == 0) {
-			cout  << Counter << " steps skipped." << endl;
-		}
-	}
-	while (!file.eof()) {
-		file.getline(buf, MAX_LINE);
-
-		for (size_t i = 0; i<NAtoms; i++) {
-			pList[i].push_back(TakePoint(file, NAtoms));
-		}
-		for (size_t i = 0; i<NAtoms; i++) {
-			Point dp = pList[i][AllSteps] - pList[i][AllSteps - 1];
-			for (size_t j = 0; j < 3; j++) {
-				if (abs(dp.a[j]) > 0.5)
-					pList[i][AllSteps].a[j] -= _sign(dp.a[j]);
-				else dp.a[j] = 0;
-			}
-		}
-		AllSteps++;
-		Counter++;
-		if (Counter%100 == 0) {
-			cout << Counter << " steps readed. Step " << AllSteps-1 << " uses." << endl;
-		}
-	}
-	cout << "Last step " << Counter-1 << " readed." << endl;
-
-	for (size_t i = 0; i < NAtoms; i++) {
-		pList[i].pop_back();
-		pList[i].shrink_to_fit();
-	}
-
 }
 
 int _sign(flo a) {
@@ -320,14 +212,4 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 	}
 	pList = move(temp);
 	shelx.atom = move(tempAtom);
-}
-Point TakePoint(istream & file, const size_t NAtoms) {
-	char buf[MAX_LINE];
-	file.getline(buf, (MAX_LINE-1));
-	char * end = buf;
-	Point out;
-	out.a[0] = strtod(end, &end);
-	out.a[1] = strtod(end, &end);
-	out.a[2] = strtod(end, NULL);
-	return out;
 }
