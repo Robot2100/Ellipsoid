@@ -2,7 +2,7 @@
 
 
 using namespace std;
-
+Matrix EqualMatrix(const size_t n);
 constexpr int MAX_LINE = 128;
 size_t cutoff = 2000;
 string filenamein;
@@ -95,8 +95,8 @@ int main(int argn, char * argv[]) {
 
 	if (is_SYMM == true) {
 		Analize_symmety(shelx, El);
+		cout << "Symmetry analise complited." << endl;
 	}
-	cout << "Symmetry analise complited." << endl;
 	size_t Elsize = El.size();
 	{
 		vector<nsShelxFile::Atom> atombuf;
@@ -117,14 +117,16 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 	size_t size_s = shelx.symm.size();
 	size_t size_el = pList.size();
 	auto size_shelx_atom = shelx.atom.size();
-	
-	vector<Matrix> tables(Matrix({1,0,0,0,1,0,0,0,1},3,3);
+	auto eqMat = EqualMatrix(3);
+	vector<Matrix> Tables(size_el, eqMat);
+	vector<Point> Shift(size_el);
+	vector<int> To_n(size_el, -1);
+	vector<bool> Used(size_el, false);
 	constexpr int _p = 1; 
 	constexpr size_t _d = 2*_p+1;
 	constexpr size_t sizemod = (_d*_d*_d);
 	size_t size_b = size_el*sizemod;
 	vector<Point> basis(size_b);
-	vector<vector<size_t> > AtomList(size_shelx_atom);
 
 
 	// Create basis
@@ -144,17 +146,20 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 		flo d = 1.0;	
 		for (size_t j = 0; j < size_el; j++)
 		{
-			flo nd = (basis[j] - shelx.atom[i].point).r();
+			flo nd = (shelx.cell.FracToCart() * (basis[j] - shelx.atom[i].point)).r();
 			if (nd < d) {
 				d = nd;
 				n = j / sizemod;
 			}
 		}
-		if (n == size_el)
+		if (n == size_el || d > 0.8)
 			throw invalid_argument("Bad shelx file.");
-		AtomList[i].push_back(n);
+		To_n[n] = i;
+		int s[3] = { (shelx.atom[i].point.a[0] - fPos[n].a[0]), (shelx.atom[i].point.a[1] - fPos[n].a[1]), (shelx.atom[i].point.a[2] - fPos[n].a[2])};
+		Shift[n] = Point(s[0], s[1], s[2] );
+		Used[n] = true;
 	}
-	// Create AtomList[][i]
+	//+
 	for (size_t s = 0; s < size_s; s++) {
 
 		for (size_t i = 0; i < size_el; i++) {
@@ -177,71 +182,71 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 		}
 	}
 
-	{
-		bool changed = false;
-		do {
-			changed = false;
-			for (size_t i = 0; i < size_el; i++) {
-				if (table[i].size() == 0) continue;
-				for (size_t j = 0; j < size_el; j++) {
-					if (table[i][j].size() == 0 || i==j || table[j].size() == 0) continue;
-					for (size_t j1 = 0; j1 < size_el; j1++) {
-						if (table[j][j1].size() == 0 || table[i][j1].size() != 0 || i==j1) continue;
-						table[i][j1].reserve(table[i][j].size() + table[j][j1].size());
-						table[i][j1].insert(table[i][j1].end(), table[j][j1].begin(), table[j][j1].end());
-						table[i][j1].insert(table[i][j1].end(), table[i][j].begin(), table[i][j].end());
-						addtable[i][j1] = addtable[i][j] + addtable[j][j1];
-					}
-					table[j].clear();
-					changed = true;
-				}
-			}
-		} while (changed == true);
-	}
+	//{
+	//	bool changed = false;
+	//	do {
+	//		changed = false;
+	//		for (size_t i = 0; i < size_el; i++) {
+	//			if (table[i].size() == 0) continue;
+	//			for (size_t j = 0; j < size_el; j++) {
+	//				if (table[i][j].size() == 0 || i==j || table[j].size() == 0) continue;
+	//				for (size_t j1 = 0; j1 < size_el; j1++) {
+	//					if (table[j][j1].size() == 0 || table[i][j1].size() != 0 || i==j1) continue;
+	//					table[i][j1].reserve(table[i][j].size() + table[j][j1].size());
+	//					table[i][j1].insert(table[i][j1].end(), table[j][j1].begin(), table[j][j1].end());
+	//					table[i][j1].insert(table[i][j1].end(), table[i][j].begin(), table[i][j].end());
+	//					addtable[i][j1] = addtable[i][j] + addtable[j][j1];
+	//				}
+	//				table[j].clear();
+	//				changed = true;
+	//			}
+	//		}
+	//	} while (changed == true);
+	//}
 
-	{
-		vector<Point> dcheck;
-		size_t size_l = pList[0].size();
-		for (size_t i = 0; i < size_el; i++) {
-			if (table[i].size() == 0) continue;
-			for (size_t j = 0; j < size_el; j++) {
-				if (table[i][j].size() == 0 || pList[j].size() == 0) continue;
-				size_t k = pList[i].size();
-				pList[i].reserve(k + pList[j].size());
-				pList[i].insert(pList[i].end(),
-					std::make_move_iterator(pList[j].begin()),
-					std::make_move_iterator(pList[j].end()));
-				pList[j].clear();
-				size_t it = pList[i].size();
+	//{
+	//	vector<Point> dcheck;
+	//	size_t size_l = pList[0].size();
+	//	for (size_t i = 0; i < size_el; i++) {
+	//		if (table[i].size() == 0) continue;
+	//		for (size_t j = 0; j < size_el; j++) {
+	//			if (table[i][j].size() == 0 || pList[j].size() == 0) continue;
+	//			size_t k = pList[i].size();
+	//			pList[i].reserve(k + pList[j].size());
+	//			pList[i].insert(pList[i].end(),
+	//				std::make_move_iterator(pList[j].begin()),
+	//				std::make_move_iterator(pList[j].end()));
+	//			pList[j].clear();
+	//			size_t it = pList[i].size();
 
-				for (size_t k2 = 0; k2 < table[i][j].size(); k2++) {
-					pList[i][k] = (table[i][j][k2]->RetroGenSymm(pList[i][k]));
-				}
-				Point dfix = pList[i][k] + Point(100.5, 100.5, 100.5) - fPos[i];
-				dfix = (Point(100, 100, 100) - Point(int(dfix.a[0]), int(dfix.a[1]), int(dfix.a[2])));
-				pList[i][k] += dfix;
+	//			for (size_t k2 = 0; k2 < table[i][j].size(); k2++) {
+	//				pList[i][k] = (table[i][j][k2]->RetroGenSymm(pList[i][k]));
+	//			}
+	//			Point dfix = pList[i][k] + Point(100.5, 100.5, 100.5) - fPos[i];
+	//			dfix = (Point(100, 100, 100) - Point(int(dfix.a[0]), int(dfix.a[1]), int(dfix.a[2])));
+	//			pList[i][k] += dfix;
 
-				for (++k; k < it; k++) {
-					for (size_t k2 = 0; k2 < table[i][j].size(); k2++) {
-						pList[i][k] = (table[i][j][k2]->RetroGenSymm(pList[i][k]));
-					}
-					pList[i][k] += dfix;
-				}
-				dcheck.push_back(pList[i].back());
-			}
-		}
-	}
+	//			for (++k; k < it; k++) {
+	//				for (size_t k2 = 0; k2 < table[i][j].size(); k2++) {
+	//					pList[i][k] = (table[i][j][k2]->RetroGenSymm(pList[i][k]));
+	//				}
+	//				pList[i][k] += dfix;
+	//			}
+	//			dcheck.push_back(pList[i].back());
+	//		}
+	//	}
+	//}
 
-	std::remove_reference<decltype(pList)>::type temp;
-	decltype(shelx.atom) tempAtom;
-	for (size_t i = 0; i < size_el; i++) {
-		if (pList[i].empty() == false) {
-			temp.push_back(move(pList[i]));
-			tempAtom.push_back(move(shelx.atom[i]));
-		}
-	}
-	pList = move(temp);
-	shelx.atom = move(tempAtom);
+	//std::remove_reference<decltype(pList)>::type temp;
+	//decltype(shelx.atom) tempAtom;
+	//for (size_t i = 0; i < size_el; i++) {
+	//	if (pList[i].empty() == false) {
+	//		temp.push_back(move(pList[i]));
+	//		tempAtom.push_back(move(shelx.atom[i]));
+	//	}
+	//}
+	//pList = move(temp);
+	//shelx.atom = move(tempAtom);
 }
 Matrix EqualMatrix(const size_t n) {
 	using namespace std;

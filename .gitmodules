@@ -1,4 +1,3 @@
 [submodule "Includes"]
 	path = Includes
 	url = https://github.com/Robot2100/Includes.git
-	branch = 1.1.2
