@@ -2,7 +2,6 @@
 
 
 using namespace std;
-Matrix EqualMatrix(const size_t n);
 constexpr int MAX_LINE = 128;
 size_t cutoff = 2000;
 string filenamein;
@@ -94,6 +93,7 @@ int main(int argn, char * argv[]) {
 	}
 
 	if (is_SYMM == true) {
+		cout << "Symmetry analise started." << endl;
 		Analize_symmety(shelx, El);
 		cout << "Symmetry analise complited." << endl;
 	}
@@ -117,7 +117,7 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 	size_t size_s = shelx.symm.size();
 	size_t size_el = pList.size();
 	auto size_shelx_atom = shelx.atom.size();
-	auto eqMat = EqualMatrix(3);
+	auto eqMat = Matrix::EqualMatrix(3);
 	vector<Matrix> Tables(size_el, eqMat);
 	vector<Point> Shift(size_el);
 	vector<int> To_n(size_el, -1);
@@ -134,16 +134,16 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 		for (int k = -_p; k <= _p; k++) {
 			for (int l = -_p; l <= _p; l++) {
 				for (size_t i = 0; i < size_el; i++,iter++) {
-					basis[iter] = shelx.cell.FracToCart() * ( fPos[i] + Point(j, k, l));
+					basis[iter] =( fPos[i] + Point(j, k, l));
 				}
 			}
 		}
 	}
-	// Create AtomList[][0]
+	// Create first atoms
 	for (size_t i = 0; i < size_shelx_atom; i++)
 	{
 		size_t n = size_el;
-		flo d = 1.0;	
+		flo d = 0.5;	
 		for (size_t j = 0; j < size_el; j++)
 		{
 			flo nd = (shelx.cell.FracToCart() * (basis[j] - shelx.atom[i].point)).r();
@@ -152,33 +152,44 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 				n = j / sizemod;
 			}
 		}
-		if (n == size_el || d > 0.8)
+		if (n == size_el)
 			throw invalid_argument("Bad shelx file.");
-		To_n[n] = i;
-		int s[3] = { (shelx.atom[i].point.a[0] - fPos[n].a[0]), (shelx.atom[i].point.a[1] - fPos[n].a[1]), (shelx.atom[i].point.a[2] - fPos[n].a[2])};
-		Shift[n] = Point(s[0], s[1], s[2] );
+		To_n[n] = n;
+		for (size_t p = 0; p < 3; p++)
+		{
+			flo s = shelx.atom[i].point.a[p] - fPos[n].a[p];
+			if (s > static_cast<flo>(0.5)) Shift[n].a[p]+=1;
+			else if (s <= static_cast<flo>(-0.5)) Shift[n].a[p] -= 1;
+		}
 		Used[n] = true;
 	}
 	//+
 	for (size_t s = 0; s < size_s; s++) {
 
 		for (size_t i = 0; i < size_el; i++) {
-			pvec[i] = shelx.cell.FracToCart() * (shelx.symm[s].GenSymm(fPos[i]));
-		}
-		for (size_t i = 0; i < size_el; i++) {
-			flo drm = (flo)1.0;
-			size_t j1 = 0;
-			for (size_t j = 0; j < size_b; j++) {
-				flo dr = (pvec[i] - basis[j]).r();
-				if (dr < drm) {
-					drm = dr;
-					j1 = j;
+
+			Point ps = shelx.symm[s].mat * fPos[i];
+
+			size_t n = size_el;
+			flo d = 0.5;
+			for (size_t j = 0; j < size_el; j++)
+			{
+				flo nd = (shelx.cell.FracToCart() * (basis[j] - ps)).r();
+				if (nd < d) {
+					d = nd;
+					n = j / sizemod;
 				}
 			}
-			size_t j2 = j1%size_el;
-			if (i == j2 || table[i][j2].size() != 0) 
-				continue;
-			addtable[i][j2] = shelx.cell.CartToFrac()*basis[j1] - fPos[j2];
+			if (n == size_el)
+				throw invalid_argument("Bad shelx file.");
+			To_n[n] = i;
+			for (size_t p = 0; p < 3; p++)
+			{
+				flo s = shelx.atom[i].point.a[p] - fPos[n].a[p];
+				if (s > static_cast<flo>(0.5)) Shift[n].a[p] += 1;
+				else if (s <= static_cast<flo>(-0.5)) Shift[n].a[p] -= 1;
+			}
+			Used[n] = true;
 		}
 	}
 
@@ -247,13 +258,4 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 	//}
 	//pList = move(temp);
 	//shelx.atom = move(tempAtom);
-}
-Matrix EqualMatrix(const size_t n) {
-	using namespace std;
-	vector<vector<flo> > vec(n, vector<flo>(n, static_cast<flo>(0.0)));
-	for (size_t i = 0; i < n; i++)
-	{
-		vec[i][i] = static_cast<flo>(1.0);
-	}
-	return Matrix(std::move(vec));
 }
