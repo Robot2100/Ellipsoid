@@ -58,7 +58,7 @@ int main(int argn, char * argv[]) {
 			return 1;
 		}
 	}
-	cout << "Program Ellipsoid. Version 1.1.2\n" << endl;
+	cout << "Program Ellipsoid. Version 1.2.0\n" << endl;
 	cout << "Ignore first " << cutoff << " steps." << endl;
 	bool is_SYMM = false;
 	nsShelxFile::ShelxData shelx;
@@ -77,7 +77,9 @@ int main(int argn, char * argv[]) {
 	}
 	vector<vector<Point> > El;
 	try {
-		El = shelx.LoadXDATCAR(cutoff, &fPos);
+		nsShelxFile::ShelxData sheltemp(nsShelxFile::XDATCAR);
+		shelx.cell = move(sheltemp.cell);
+		El = nsShelxFile::ShelxData::LoadXDATCAR(cutoff, &fPos);
 	}
 	catch (IncExceptions::OpenXDATCAR_Exception & ex) {
 		cerr << ex.what() << endl;
@@ -94,7 +96,16 @@ int main(int argn, char * argv[]) {
 
 	if (is_SYMM == true) {
 		cout << "Symmetry analise started." << endl;
-		Analize_symmety(shelx, El);
+		try {
+			Analize_symmety(shelx, El);
+		}
+		catch (invalid_argument & ex) {
+			cerr << ex.what() << endl;
+			return 1;
+		}
+		catch (...) {
+			cerr << "Unknown error during symmetry analising." << endl;
+		}
 		cout << "Symmetry analise complited." << endl;
 	}
 	size_t Elsize = El.size();
@@ -121,8 +132,8 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 	vector<Matrix> Tables(size_el, eqMat);
 	vector<Point> Shift(size_el);
 	vector<int> To_n(size_el, -1);
-	vector<bool> Used(size_el, false);
-	constexpr int _p = 1; 
+	//vector<bool> Used(size_el, false);
+	constexpr int _p = 1;
 	constexpr size_t _d = 2*_p+1;
 	constexpr size_t sizemod = (_d*_d*_d);
 	size_t size_b = size_el*sizemod;
@@ -143,13 +154,13 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 	for (size_t i = 0; i < size_shelx_atom; i++)
 	{
 		size_t n = size_el;
-		flo d = 0.5;	
-		for (size_t j = 0; j < size_el; j++)
+		flo d = 2;	
+		for (size_t j = 0; j < size_b; j++)
 		{
 			flo nd = (shelx.cell.FracToCart() * (basis[j] - shelx.atom[i].point)).r();
 			if (nd < d) {
 				d = nd;
-				n = j / sizemod;
+				n = j % size_el;
 			}
 		}
 		if (n == size_el)
@@ -161,37 +172,55 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 			if (s > static_cast<flo>(0.5)) Shift[n].a[p]+=1;
 			else if (s <= static_cast<flo>(-0.5)) Shift[n].a[p] -= 1;
 		}
-		Used[n] = true;
 	}
-	//+
-	for (size_t s = 0; s < size_s; s++) {
-
+	// T = size_s * size_el^2
+	{
+		vector<int> tom;
+		tom.reserve(size_el);
+		for (size_t i = 0; i < size_el; i++)
+		{
+			if (To_n[i] != -1) {
+				tom.push_back(i);
+			}
+		}
+		vector<Matrix> Invsymm;
+		Invsymm.reserve(size_s);
+		for (size_t s = 0; s < size_s; s++) {
+			Invsymm.push_back(shelx.symm[s].mat.Invert());
+		}
 		for (size_t i = 0; i < size_el; i++) {
-
-			Point ps = shelx.symm[s].mat * fPos[i];
-
-			size_t n = size_el;
-			flo d = 0.5;
-			for (size_t j = 0; j < size_el; j++)
-			{
-				flo nd = (shelx.cell.FracToCart() * (basis[j] - ps)).r();
-				if (nd < d) {
-					d = nd;
-					n = j / sizemod;
+			if (i >= tom.size()) {
+				throw invalid_argument("Need more atoms in shelx file.");
+			}
+			for (size_t s = 0; s < size_s; s++) {
+				Point ps = shelx.symm[s].GenSymmNorm(fPos[tom[i]]);
+				size_t n = size_el;
+				flo d = 2;
+				for (size_t j = 0; j < size_b; j++)
+				{
+					flo nd = (shelx.cell.FracToCart() * (basis[j] - ps)).r();
+					if (nd < d) {
+						d = nd;
+						n = j % size_el;
+					}
 				}
+				if (n == size_el)
+					throw invalid_argument("Bad symmetry in shelx file.");
+				if (To_n[n] != -1) continue;
+				To_n[n] = To_n[tom[i]];
+				Tables[n] = Invsymm[s] * Tables[tom[i]];
+				Shift[n] = Shift[tom[i]];
+				for (size_t p = 0; p < 3; p++)
+				{
+					flo s = ps.a[p] - fPos[n].a[p];
+					if (s > static_cast<flo>(0.5)) Shift[n].a[p] += 1;
+					else if (s <= static_cast<flo>(-0.5)) Shift[n].a[p] -= 1;
+				}
+				tom.push_back(n);
 			}
-			if (n == size_el)
-				throw invalid_argument("Bad shelx file.");
-			To_n[n] = i;
-			for (size_t p = 0; p < 3; p++)
-			{
-				flo s = shelx.atom[i].point.a[p] - fPos[n].a[p];
-				if (s > static_cast<flo>(0.5)) Shift[n].a[p] += 1;
-				else if (s <= static_cast<flo>(-0.5)) Shift[n].a[p] -= 1;
-			}
-			Used[n] = true;
 		}
 	}
+	//+
 
 	//{
 	//	bool changed = false;
@@ -214,7 +243,6 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 	//		}
 	//	} while (changed == true);
 	//}
-
 	//{
 	//	vector<Point> dcheck;
 	//	size_t size_l = pList[0].size();
@@ -229,14 +257,12 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 	//				std::make_move_iterator(pList[j].end()));
 	//			pList[j].clear();
 	//			size_t it = pList[i].size();
-
 	//			for (size_t k2 = 0; k2 < table[i][j].size(); k2++) {
 	//				pList[i][k] = (table[i][j][k2]->RetroGenSymm(pList[i][k]));
 	//			}
 	//			Point dfix = pList[i][k] + Point(100.5, 100.5, 100.5) - fPos[i];
 	//			dfix = (Point(100, 100, 100) - Point(int(dfix.a[0]), int(dfix.a[1]), int(dfix.a[2])));
 	//			pList[i][k] += dfix;
-
 	//			for (++k; k < it; k++) {
 	//				for (size_t k2 = 0; k2 < table[i][j].size(); k2++) {
 	//					pList[i][k] = (table[i][j][k2]->RetroGenSymm(pList[i][k]));
@@ -247,7 +273,6 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 	//		}
 	//	}
 	//}
-
 	//std::remove_reference<decltype(pList)>::type temp;
 	//decltype(shelx.atom) tempAtom;
 	//for (size_t i = 0; i < size_el; i++) {
