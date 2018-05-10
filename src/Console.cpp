@@ -173,7 +173,7 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 			else if (s <= static_cast<flo>(-0.5)) Shift[n].a[p] -= 1;
 		}
 	}
-	// T = size_s * size_el^2
+	// T = sizemod * size_s * size_el^2
 	{
 		vector<int> tom;
 		tom.reserve(size_el);
@@ -209,78 +209,34 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 				if (To_n[n] != -1) continue;
 				To_n[n] = To_n[tom[i]];
 				Tables[n] = Invsymm[s] * Tables[tom[i]];
-				Shift[n] = Shift[tom[i]];
-				for (size_t p = 0; p < 3; p++)
-				{
-					flo s = ps.a[p] - fPos[n].a[p];
-					if (s > static_cast<flo>(0.5)) Shift[n].a[p] += 1;
-					else if (s <= static_cast<flo>(-0.5)) Shift[n].a[p] -= 1;
-				}
+				Shift[n] = (Tables[n].Invert() * fPos[To_n[n]]) - fPos[n];
 				tom.push_back(n);
+				const size_t nsize = pList[n].size();
+				pList[To_n[n]].reserve(pList[To_n[n]].size() + nsize);
+				for (size_t l = 0; l < nsize; l++)
+				{
+					pList[To_n[n]].push_back(Tables[n] * (Shift[n] + pList[n][l]));
+				}
+				pList[n].clear();
 			}
 		}
 	}
-	//+
-
-	//{
-	//	bool changed = false;
-	//	do {
-	//		changed = false;
-	//		for (size_t i = 0; i < size_el; i++) {
-	//			if (table[i].size() == 0) continue;
-	//			for (size_t j = 0; j < size_el; j++) {
-	//				if (table[i][j].size() == 0 || i==j || table[j].size() == 0) continue;
-	//				for (size_t j1 = 0; j1 < size_el; j1++) {
-	//					if (table[j][j1].size() == 0 || table[i][j1].size() != 0 || i==j1) continue;
-	//					table[i][j1].reserve(table[i][j].size() + table[j][j1].size());
-	//					table[i][j1].insert(table[i][j1].end(), table[j][j1].begin(), table[j][j1].end());
-	//					table[i][j1].insert(table[i][j1].end(), table[i][j].begin(), table[i][j].end());
-	//					addtable[i][j1] = addtable[i][j] + addtable[j][j1];
-	//				}
-	//				table[j].clear();
-	//				changed = true;
-	//			}
-	//		}
-	//	} while (changed == true);
-	//}
-	//{
-	//	vector<Point> dcheck;
-	//	size_t size_l = pList[0].size();
-	//	for (size_t i = 0; i < size_el; i++) {
-	//		if (table[i].size() == 0) continue;
-	//		for (size_t j = 0; j < size_el; j++) {
-	//			if (table[i][j].size() == 0 || pList[j].size() == 0) continue;
-	//			size_t k = pList[i].size();
-	//			pList[i].reserve(k + pList[j].size());
-	//			pList[i].insert(pList[i].end(),
-	//				std::make_move_iterator(pList[j].begin()),
-	//				std::make_move_iterator(pList[j].end()));
-	//			pList[j].clear();
-	//			size_t it = pList[i].size();
-	//			for (size_t k2 = 0; k2 < table[i][j].size(); k2++) {
-	//				pList[i][k] = (table[i][j][k2]->RetroGenSymm(pList[i][k]));
-	//			}
-	//			Point dfix = pList[i][k] + Point(100.5, 100.5, 100.5) - fPos[i];
-	//			dfix = (Point(100, 100, 100) - Point(int(dfix.a[0]), int(dfix.a[1]), int(dfix.a[2])));
-	//			pList[i][k] += dfix;
-	//			for (++k; k < it; k++) {
-	//				for (size_t k2 = 0; k2 < table[i][j].size(); k2++) {
-	//					pList[i][k] = (table[i][j][k2]->RetroGenSymm(pList[i][k]));
-	//				}
-	//				pList[i][k] += dfix;
-	//			}
-	//			dcheck.push_back(pList[i].back());
-	//		}
-	//	}
-	//}
-	//std::remove_reference<decltype(pList)>::type temp;
-	//decltype(shelx.atom) tempAtom;
-	//for (size_t i = 0; i < size_el; i++) {
-	//	if (pList[i].empty() == false) {
-	//		temp.push_back(move(pList[i]));
-	//		tempAtom.push_back(move(shelx.atom[i]));
-	//	}
-	//}
-	//pList = move(temp);
-	//shelx.atom = move(tempAtom);
+	{
+		vector<vector<Point> > temp;
+		temp.reserve(size_shelx_atom);
+		for (size_t j = 0; j < size_shelx_atom; j++) {
+			for (size_t i = 0; i < size_el; i++) {
+				if (!(pList[i].empty())) {
+					if(Point(fmod(fPos[i].a[0] - shelx.atom[j].point.a[0] + _d, 1),
+						fmod(fPos[i].a[0] - shelx.atom[j].point.a[0] + _d, 1),
+						fmod(fPos[i].a[0] - shelx.atom[j].point.a[0] + _d, 1)).r() > 0.01) continue;
+					temp.push_back(move(pList[i]));
+				}
+			}
+		}
+		pList.swap(temp);
+		if (size_shelx_atom != pList.size()) {
+			throw invalid_argument("Bad shelx file.");
+		}
+	}
 }
