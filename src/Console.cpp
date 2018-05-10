@@ -71,7 +71,7 @@ int main(int argn, char * argv[]) {
 			is_SYMM = true;
 		}
 		else {
-			cout << "Cannot open <Shelx_File>. Continue without symmetry." << endl;
+			cerr << "Cannot open <Shelx_File>. Continue without symmetry." << endl;
 		}
 		old.close();
 	}
@@ -105,6 +105,7 @@ int main(int argn, char * argv[]) {
 		}
 		catch (...) {
 			cerr << "Unknown error during symmetry analising." << endl;
+			return 1;
 		}
 		cout << "Symmetry analise complited." << endl;
 	}
