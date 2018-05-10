@@ -9,3 +9,17 @@
 
 ### Usage:
     Ellipsoid <Filename> [-c/--cut <N>] [-q/--quiet] [-h/--help]
+    
+### Parameters:
+
+    \<Filename\> (optional)
+  File of type Shelx. The program takes atomic coordinates and symmetry from this file.
+  
+    -c/--cut <N>
+  Ignore the first steps of the "N" in XDATCAR. the default is N = 2000.
+  
+    -q/-quiet
+  Print only error messages.
+  
+    -h/--help
+  Print help information.
