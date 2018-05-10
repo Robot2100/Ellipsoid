@@ -72,13 +72,19 @@ int main(int argn, char * argv[]) {
 		}
 		else {
 			cerr << "Cannot open <Shelx_File>. Continue without symmetry." << endl;
+			is_SYMM = false;
 		}
 		old.close();
 	}
 	vector<vector<Point> > El;
 	try {
 		nsShelxFile::ShelxData sheltemp(nsShelxFile::XDATCAR);
-		shelx.cell = move(sheltemp.cell);
+		if (is_SYMM == true) {
+			shelx.cell = move(sheltemp.cell);
+		} 
+		else {
+			shelx = move(sheltemp);
+		}
 		El = nsShelxFile::ShelxData::LoadXDATCAR(cutoff, &fPos);
 	}
 	catch (IncExceptions::OpenXDATCAR_Exception & ex) {
@@ -110,7 +116,7 @@ int main(int argn, char * argv[]) {
 		cout << "Symmetry analise complited." << endl;
 	}
 	size_t Elsize = El.size();
-	{
+	if (is_SYMM == true) {
 		vector<nsShelxFile::Atom> atombuf;
 		for (size_t i = 0; i < Elsize; i++)
 		{
