@@ -5,7 +5,7 @@
 
   Calculate thermal ellipsoids and create shelx file from XDATCAR (VASP output).
 
-#### This program uses [![Includes](https://img.shields.io/badge/Includes-1.1.5-orange.svg)](https://github.com/Robot2100/Includes/releases/tag/1.1.5)
+#### This program uses [![Includes](https://img.shields.io/badge/Includes-1.1.6-orange.svg)](https://github.com/Robot2100/Includes/releases/tag/1.1.6)
 
 ### Usage:
     Ellipsoid <Filename> [-c/--cut <N>] [-q/--quiet] [-h/--help]
