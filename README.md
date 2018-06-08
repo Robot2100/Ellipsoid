@@ -12,14 +12,14 @@
     
 ### Parameters:
 
-    \<Filename\> (optional)
-  File of type Shelx. The program takes atomic coordinates and symmetry from this file.
+  #### \<Filename\> (optional)
+  File is Shelx-type file (.res/.ins). The program takes atomic coordinates and symmetry from this file.
   
-    -c/--cut <N>
+  #### -c/--cut <N>
   Ignore the first steps of the "N" in XDATCAR. the default is N = 2000.
   
-    -q/-quiet
+  #### -q/-quiet
   Print only error messages.
   
-    -h/--help
+  #### -h/--help
   Print help information.
