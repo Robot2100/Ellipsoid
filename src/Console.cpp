@@ -116,7 +116,7 @@ int main(int argn, char * argv[]) {
 		cout << "Symmetry analise complited." << endl;
 	}
 	size_t Elsize = El.size();
-	if (is_SYMM == true) {
+	if (true) {
 		vector<nsShelxFile::Atom> atombuf;
 		for (size_t i = 0; i < Elsize; i++)
 		{
