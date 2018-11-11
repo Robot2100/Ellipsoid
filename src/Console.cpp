@@ -35,6 +35,7 @@ void ffunc(const int l, std::vector<string> & in) {
 
 int main(int argn, char * argv[]) {
 	ios::sync_with_stdio(false);
+	cout << "Program Ellipsoid. Version 1.2.0\n" << endl;
 	{
 		constexpr BaseParam bp[]{
 			{"",	"",		"<Filename>",	"Take symmetry from shelx file [optional]"},
@@ -58,7 +59,6 @@ int main(int argn, char * argv[]) {
 			return 1;
 		}
 	}
-	cout << "Program Ellipsoid. Version 1.2.0\n" << endl;
 	cout << "Ignore first " << cutoff << " steps." << endl;
 	bool is_SYMM = false;
 	nsShelxFile::ShelxData shelx;
@@ -139,10 +139,9 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, nsShelxFile::ShelxData & xd
 	constexpr size_t sizemod = (_d*_d*_d);
 	const size_t size_b = size_el*sizemod;
 	vector<Point> basis(size_b);
-	vector<size_t> first_set(size_shelx_atom);
 	vector<size_t> from_to(xdat.sfac.size());
 	auto Ntypes = from_to.size();
-	vector<size_t> shelxToXdat(Ntypes)/*, xdatToShelx(Ntypes)*/;
+	vector<size_t> shelxToXdat(Ntypes);
 	vector<size_t> transfer(size_shelx_atom);
 	from_to[0] = 0;
 	// Create basis
@@ -162,7 +161,7 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, nsShelxFile::ShelxData & xd
 
 		for (size_t j = 1; j < Ntypes; j++)
 		{
-			if (strcmpi(shelx.sfac[i].c_str(), xdat.sfac[j].c_str()) == 0)
+			if (_strcmpi(shelx.sfac[i].c_str(), xdat.sfac[j].c_str()) == 0)
 			{
 				shelxToXdat[i] = j;
 				break;
@@ -184,13 +183,13 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, nsShelxFile::ShelxData & xd
 		size_t from = from_to[shelxToXdat[shelx.atom[i].type] - 1];
 		size_t to = from_to[shelxToXdat[shelx.atom[i].type]];
 		size_t n = size_el;
-		flo d = 20;
+		flo d = 2;
 		
 		for (size_t j = 0; j < size_b; j++)
 		{
 			auto temp = j % size_el;
-			//if (temp < from || temp >= to)
-				//continue;
+			if (temp < from || temp >= to)
+				continue;
 			flo nd = (xdat.cell.FracToCart() * (basis[j] - shelx.atom[i].point)).r();
 			if (nd < d) {
 				d = nd;
@@ -202,7 +201,7 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, nsShelxFile::ShelxData & xd
 		To_n[n] = n;
 		transfer[i] = n;
 		xdat.atom[n].type = shelx.atom[i].type;
-		strcpy(xdat.atom[n].label, shelx.atom[i].label);
+		strcpy_s(xdat.atom[n].label, shelx.atom[i].label);
 		for (size_t p = 0; p < 3; p++)
 		{
 			flo s = shelx.atom[i].point.a[p] - fPos[n].a[p];
@@ -226,6 +225,16 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, nsShelxFile::ShelxData & xd
 			Invsymm.push_back(shelx.symm[s].mat.Invert());
 		}
 		for (size_t i = 0; i < size_el; i++) {
+			size_t from;
+			size_t to;
+			for (size_t j = 1; j < Ntypes; j++)
+			{
+				if (i < from_to[j]) {
+					from = from_to[j - 1];
+					to = from_to[j];
+					break;
+				}
+			}
 			if (i >= tom.size()) {
 				throw invalid_argument("Need more atoms in shelx file.");
 			}
@@ -235,6 +244,9 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, nsShelxFile::ShelxData & xd
 				flo d = 2;
 				for (size_t j = 0; j < size_b; j++)
 				{
+					auto temp = j % size_el;
+					if (temp < from || temp >= to)
+						continue;
 					flo nd = (xdat.cell.FracToCart() * (basis[j] - ps)).r();
 					if (nd < d) {
 						d = nd;
