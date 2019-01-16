@@ -7,7 +7,7 @@ size_t cutoff = 2000;
 string filenamein;
 
 std::vector<Point> fPos;
-void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList);
+void Analize_symmety(nsShelxFile::ShelxData & shelx, nsShelxFile::ShelxData & xdat, vector<vector<Point> > & pList);
 void ffunc(const int l, std::vector<string> & in) {
 	bool help = false;
 	auto size = in.size();
@@ -35,6 +35,7 @@ void ffunc(const int l, std::vector<string> & in) {
 
 int main(int argn, char * argv[]) {
 	ios::sync_with_stdio(false);
+	cout << "Program Ellipsoid. Version 1.2.0\n" << endl;
 	{
 		constexpr BaseParam bp[]{
 			{"",	"",		"<Filename>",	"Take symmetry from shelx file [optional]"},
@@ -58,10 +59,10 @@ int main(int argn, char * argv[]) {
 			return 1;
 		}
 	}
-	cout << "Program Ellipsoid. Version 1.2.0\n" << endl;
 	cout << "Ignore first " << cutoff << " steps." << endl;
 	bool is_SYMM = false;
 	nsShelxFile::ShelxData shelx;
+	nsShelxFile::ShelxData xdata;
 	if (filenamein.length() != 0) {
 		cout << "Inputed <Shelx_File> name: " << filenamein << endl;
 		ifstream old(filenamein);
@@ -78,13 +79,7 @@ int main(int argn, char * argv[]) {
 	}
 	vector<vector<Point> > El;
 	try {
-		nsShelxFile::ShelxData sheltemp(nsShelxFile::XDATCAR);
-		if (is_SYMM == true) {
-			shelx.cell = move(sheltemp.cell);
-		} 
-		else {
-			shelx = move(sheltemp);
-		}
+		xdata = move(nsShelxFile::ShelxData(nsShelxFile::XDATCAR));
 		El = nsShelxFile::ShelxData::LoadXDATCAR(cutoff, &fPos);
 	}
 	catch (IncExceptions::OpenXDATCAR_Exception & ex) {
@@ -103,7 +98,7 @@ int main(int argn, char * argv[]) {
 	if (is_SYMM == true) {
 		cout << "Symmetry analise started." << endl;
 		try {
-			Analize_symmety(shelx, El);
+			Analize_symmety(shelx, xdata, El);
 		}
 		catch (invalid_argument & ex) {
 			cerr << ex.what() << endl;
@@ -115,38 +110,40 @@ int main(int argn, char * argv[]) {
 		}
 		cout << "Symmetry analise complited." << endl;
 	}
-	size_t Elsize = El.size();
-	if (true) {
+	else {
+		size_t Elsize = El.size();
 		vector<nsShelxFile::Atom> atombuf;
 		for (size_t i = 0; i < Elsize; i++)
 		{
-			atombuf.push_back(nsShelxFile::Atom(shelx.atom[i].label, shelx.atom[i].type, shelx.atom[i].occup, shelx.cell, El[i], true));
+			atombuf.push_back(nsShelxFile::Atom(xdata.atom[i].label, xdata.atom[i].type, 1.0, xdata.cell, move(El[i]), true));
 		}
-		shelx.atom = move(atombuf);
+		xdata.atom = move(atombuf);
 	}
 	cout << "Writing to file 'a.ins'." << endl;
 	ofstream out("a.ins");
-	shelx.OutIns(out);
+	xdata.OutIns(out);
 	cout << "Program normal termination. " << endl;
 	return 0;
 }
-void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pList) {
+void Analize_symmety(nsShelxFile::ShelxData & shelx, nsShelxFile::ShelxData & xdat, vector<vector<Point> > & pList) {
 	using namespace nsShelxFile;
-	size_t size_s = shelx.symm.size();
-	size_t size_el = pList.size();
-	auto size_shelx_atom = shelx.atom.size();
-	auto eqMat = Matrix::EqualMatrix(3);
+	const size_t size_s = shelx.symm.size();
+	const size_t size_el = pList.size();
+	const auto size_shelx_atom = shelx.atom.size();
+	const auto eqMat = Matrix::EqualMatrix(3);
 	vector<Matrix> Tables(size_el, eqMat);
-	vector<Point> Shift(size_el);
+	vector<Point> Shift(size_el), checkPoint(size_el);
 	vector<int> To_n(size_el, -1);
-	//vector<bool> Used(size_el, false);
 	constexpr int _p = 1;
 	constexpr size_t _d = 2*_p+1;
 	constexpr size_t sizemod = (_d*_d*_d);
-	size_t size_b = size_el*sizemod;
+	const size_t size_b = size_el*sizemod;
 	vector<Point> basis(size_b);
-
-
+	vector<size_t> from_to(xdat.sfac.size());
+	auto Ntypes = from_to.size();
+	vector<size_t> shelxToXdat(Ntypes), xdatToShelx(Ntypes);
+	vector<bool> rotor(size_el, false);
+	from_to[0] = 0;
 	// Create basis
 	for (int j = -_p, iter = 0; j <= _p; j++) {
 		for (int k = -_p; k <= _p; k++) {
@@ -157,93 +154,135 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, vector<vector<Point> > & pL
 			}
 		}
 	}
-	// Create first atoms
+	// Creating list of types
+	for (size_t i = 1; i < Ntypes; i++)
+	{
+		from_to[i] = from_to[i-1] + xdat.unit[i];
+
+		for (size_t j = 1; j < Ntypes; j++)
+		{
+			if (_strcmpi(shelx.sfac[i].c_str(), xdat.sfac[j].c_str()) == 0)
+			{
+				shelxToXdat[i] = j;
+				break;
+			}
+		}
+		for (size_t j = 1; j < Ntypes; j++)
+		{
+			if (strcmpi(shelx.sfac[j].c_str(), xdat.sfac[i].c_str()) == 0)
+			{
+				xdatToShelx[j] = i;
+				break;
+			}
+		}
+	}
+
+	// Connect first atoms
 	for (size_t i = 0; i < size_shelx_atom; i++)
 	{
+		size_t from = from_to[shelxToXdat[shelx.atom[i].type] - 1];
+		size_t to = from_to[shelxToXdat[shelx.atom[i].type]];
 		size_t n = size_el;
-		flo d = 2;	
+		flo d = 2;
+		
 		for (size_t j = 0; j < size_b; j++)
 		{
-			flo nd = (shelx.cell.FracToCart() * (basis[j] - shelx.atom[i].point)).r();
+			auto temp = j % size_el;
+			if (temp < from || temp >= to)
+				continue;
+			flo nd = (xdat.cell.FracToCart() * (basis[j] - shelx.atom[i].point)).r();
 			if (nd < d) {
 				d = nd;
-				n = j % size_el;
+				n = temp;
+				Shift[n] = fPos[n] - basis[j];
 			}
 		}
 		if (n == size_el)
 			throw invalid_argument("Bad shelx file.");
 		To_n[n] = n;
+		Tables[n] = eqMat;
+		checkPoint[n] = fPos[n];
+		rotor[n] = true;
+		strcpy_s(xdat.atom[n].label, shelx.atom[i].label);
 		for (size_t p = 0; p < 3; p++)
 		{
 			flo s = shelx.atom[i].point.a[p] - fPos[n].a[p];
-			if (s > static_cast<flo>(0.5)) Shift[n].a[p]+=1;
+			if (s > static_cast<flo>(0.5)) Shift[n].a[p] += 1;
 			else if (s <= static_cast<flo>(-0.5)) Shift[n].a[p] -= 1;
 		}
 	}
-	// T = sizemod * size_s * size_el^2
-	{
-		vector<int> tom;
-		tom.reserve(size_el);
+	bool changed = true;
+	while (changed == true) {
+		changed = false;
 		for (size_t i = 0; i < size_el; i++)
 		{
-			if (To_n[i] != -1) {
-				tom.push_back(i);
-			}
-		}
-		vector<Matrix> Invsymm;
-		Invsymm.reserve(size_s);
-		for (size_t s = 0; s < size_s; s++) {
-			Invsymm.push_back(shelx.symm[s].mat.Invert());
-		}
-		for (size_t i = 0; i < size_el; i++) {
-			if (i >= tom.size()) {
-				throw invalid_argument("Need more atoms in shelx file.");
-			}
-			for (size_t s = 0; s < size_s; s++) {
-				Point ps = shelx.symm[s].GenSymmNorm(fPos[tom[i]]);
+			if (rotor[i] == false) continue;
+			for (size_t s = 0; s < size_s; s++)
+			{
+				Point tp = shelx.symm[s].GenSymm(fPos[i]);
+
+				size_t from = from_to[xdat.atom[i].type - 1];
+				size_t to = from_to[xdat.atom[i].type];
 				size_t n = size_el;
 				flo d = 2;
+
 				for (size_t j = 0; j < size_b; j++)
 				{
-					flo nd = (shelx.cell.FracToCart() * (basis[j] - ps)).r();
+					auto temp = j % size_el;
+					if (temp < from || temp >= to)
+						continue;
+					flo nd = (xdat.cell.FracToCart() * (basis[j] - tp)).r();
 					if (nd < d) {
 						d = nd;
-						n = j % size_el;
+						n = temp;
 					}
 				}
 				if (n == size_el)
-					throw invalid_argument("Bad symmetry in shelx file.");
-				if (To_n[n] != -1) continue;
-				To_n[n] = To_n[tom[i]];
-				Tables[n] = Invsymm[s] * Tables[tom[i]];
-				Shift[n] = (Tables[n].Invert() * fPos[To_n[n]]) - fPos[n];
-				tom.push_back(n);
-				const size_t nsize = pList[n].size();
-				pList[To_n[n]].reserve(pList[To_n[n]].size() + nsize);
-				for (size_t l = 0; l < nsize; l++)
-				{
-					pList[To_n[n]].push_back(Tables[n] * (Shift[n] + pList[n][l]));
-				}
-				pList[n].clear();
+					throw invalid_argument("Bad shelx file.");
+				if (To_n[n] != -1)
+					continue;
+				To_n[n] = To_n[i];
+				Tables[n] = shelx.symm[s].mat * Tables[i];
+				checkPoint[n] = shelx.symm[s].GenSymmNorm(checkPoint[i]);
+				rotor[n] = true;
+				changed = true;
 			}
+			rotor[i] = false;
 		}
 	}
+	
+	for (size_t i = 0; i < size_el; i++)
 	{
-		vector<vector<Point> > temp;
-		temp.reserve(size_shelx_atom);
-		for (size_t j = 0; j < size_shelx_atom; j++) {
-			for (size_t i = 0; i < size_el; i++) {
-				if (!(pList[i].empty())) {
-					if(Point(fmod(fPos[i].a[0] - shelx.atom[j].point.a[0] + _d, 1),
-						fmod(fPos[i].a[0] - shelx.atom[j].point.a[0] + _d, 1),
-						fmod(fPos[i].a[0] - shelx.atom[j].point.a[0] + _d, 1)).r() > 0.01) continue;
-					temp.push_back(move(pList[i]));
-				}
-			}
+
+		if (i == To_n[i]) {
+			//xdat.atom[i].type = xdatToShelx[xdat.atom[i].type];
+			continue;
 		}
-		pList.swap(temp);
-		if (size_shelx_atom != pList.size()) {
-			throw invalid_argument("Bad shelx file.");
+
+		Tables[i] = std::move(Tables[i].Invert());
+		Shift[i] = checkPoint[To_n[i]] - Tables[i] * checkPoint[i];
+
+		// Coping data
+		const size_t p_size = pList[i].size();
+		pList[To_n[i]].reserve(p_size + pList[To_n[i]].size());
+		for (size_t j = 0; j < p_size; j++)
+		{
+			pList[To_n[i]].push_back(Tables[i] * pList[i][j] + Shift[i]);
 		}
+		pList[i].clear();
 	}
+	vector<nsShelxFile::Atom> atombuf;
+
+	for (size_t i = 0; i < size_el; i++)
+	{
+		if (pList[i].empty()) 
+			continue;
+		atombuf.push_back(nsShelxFile::Atom(xdat.atom[i].label, xdat.atom[i].type, 1, xdat.cell, move(pList[i]), true));
+		pList[i].clear();
+	}
+	xdat.atom = move(atombuf);
+	xdat.LATT = shelx.LATT;
+	xdat.symm = shelx.symm;
+	//xdat.sfac = shelx.sfac;
+	//xdat.unit = shelx.unit;
 }
