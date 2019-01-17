@@ -184,7 +184,7 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, nsShelxFile::ShelxData & xd
 		size_t to = from_to[shelxToXdat[shelx.atom[i].type]];
 		size_t n = size_el;
 		flo d = 2;
-		
+		Point tcheckpoint;
 		for (size_t j = 0; j < size_b; j++)
 		{
 			auto temp = j % size_el;
@@ -194,6 +194,7 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, nsShelxFile::ShelxData & xd
 			if (nd < d) {
 				d = nd;
 				n = temp;
+				tcheckpoint = basis[j];
 				Shift[n] = fPos[n] - basis[j];
 			}
 		}
@@ -201,7 +202,7 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, nsShelxFile::ShelxData & xd
 			throw invalid_argument("Bad shelx file.");
 		To_n[n] = n;
 		Tables[n] = eqMat;
-		checkPoint[n] = fPos[n];
+		checkPoint[n] = tcheckpoint;
 		rotor[n] = true;
 		strcpy_s(xdat.atom[n].label, shelx.atom[i].label);
 		for (size_t p = 0; p < 3; p++)
@@ -255,7 +256,12 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, nsShelxFile::ShelxData & xd
 	{
 
 		if (i == To_n[i]) {
-			//xdat.atom[i].type = xdatToShelx[xdat.atom[i].type];
+			const size_t p_size = pList[i].size();
+			Shift[i] = checkPoint[i] - fPos[i];
+			for (size_t j = 0; j < p_size; j++)
+			{
+				pList[i][j] += Shift[i];
+			}
 			continue;
 		}
 
@@ -283,6 +289,4 @@ void Analize_symmety(nsShelxFile::ShelxData & shelx, nsShelxFile::ShelxData & xd
 	xdat.atom = move(atombuf);
 	xdat.LATT = shelx.LATT;
 	xdat.symm = shelx.symm;
-	//xdat.sfac = shelx.sfac;
-	//xdat.unit = shelx.unit;
 }
